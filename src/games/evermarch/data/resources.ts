@@ -2,7 +2,7 @@
  * Resource definitions: items the player collects.
  */
 
-import type { ResourceId } from './tasks'
+import { ALL_TASKS, type ResourceId, type TaskDefinition } from './tasks'
 
 export interface ResourceDefinition {
   id: ResourceId
@@ -32,11 +32,13 @@ export const RESOURCES: Record<ResourceId, ResourceDefinition> = {
 }
 
 export function getResourceDefinition(id: ResourceId): ResourceDefinition {
-  return RESOURCES[id] ?? {
+  const defined = RESOURCES[id]
+
+  return {
     id,
-    name: titleFromId(id),
-    icon: iconForResource(id),
-    category: categoryForResource(id),
+    name: defined?.name ?? titleFromId(id),
+    icon: defined?.icon ?? iconForResource(id),
+    category: defined?.category ?? categoryForResource(id),
     sellValue: sellValueForResource(id),
   }
 }
@@ -53,14 +55,15 @@ function titleFromId(id: string): string {
 }
 
 function categoryForResource(id: string): string {
+  if (id === 'masterwork_core') return 'metalwork'
+  if (id.includes('fittings') || id.includes('frame') || id.includes('plate') || id.includes('mechanism') || id.includes('crucible') || id.includes('bracing') || id.includes('filigree') || id.includes('setting') || id.includes('assembly') || id.includes('inlay')) return 'metalwork'
+  if (id.includes('arrow') || id.includes('bow') || id.includes('bolt') || id.includes('crossbow')) return 'fletched'
+  if (id.includes('charm') || id.includes('locket') || id.includes('ring') || id.includes('amulet') || id.includes('necklace') || id.includes('brooch') || id.includes('clasp') || id.includes('siglet') || id.includes('compass') || id.includes('relic') || id.includes('prism') || id.includes('totem') || id.includes('idol')) return 'crafted'
   if (id.endsWith('_ore') || id === 'coal' || id.includes('stone') || id.includes('crystal') || id.includes('core')) return 'ore'
   if (id.endsWith('_log') || id.includes('timber')) return 'log'
   if (id.startsWith('raw_')) return 'fish'
   if (id.startsWith('cooked_')) return 'food'
   if (id.endsWith('_ash') || id.endsWith('_ember')) return 'ember'
-  if (id.includes('fittings') || id.includes('frame') || id.includes('plate') || id.includes('mechanism') || id.includes('crucible')) return 'metalwork'
-  if (id.includes('arrow') || id.includes('bow') || id.includes('bolt') || id.includes('crossbow')) return 'fletched'
-  if (id.includes('charm') || id.includes('locket') || id.includes('ring') || id.includes('amulet') || id.includes('necklace') || id.includes('relic') || id.includes('idol')) return 'crafted'
   if (id === 'rune_essence' || id.endsWith('_rune')) return 'rune'
   if (['barley', 'sunleaf', 'mooncap', 'silverthorn', 'starflower', 'everroot', 'worldseed'].includes(id)) return 'crop'
   return 'misc'
@@ -83,11 +86,68 @@ function iconForResource(id: string): string {
   }
 }
 
-function sellValueForResource(id: string): number {
+const CATEGORY_BASE_VALUES: Record<string, number> = {
+  ore: 4,
+  log: 3,
+  fish: 3,
+  food: 5,
+  crop: 3,
+  ember: 5,
+  metalwork: 8,
+  fletched: 6,
+  crafted: 8,
+  rune: 4,
+  misc: 1,
+}
+
+const sellValueCache = new Map<string, number>()
+
+function sellValueForResource(id: string, seen: Set<string> = new Set()): number {
+  if (id === 'gold') return 0
+
+  const cached = sellValueCache.get(id)
+  if (cached !== undefined) return cached
+
   const category = categoryForResource(id)
-  if (category === 'rune') return 6
-  if (category === 'crafted' || category === 'metalwork') return 10
-  if (category === 'fletched' || category === 'food') return 7
-  if (category === 'ore' || category === 'log' || category === 'fish' || category === 'crop') return 4
-  return 1
+  if (seen.has(id)) {
+    return categoryBaseValue(category)
+  }
+
+  const producer = getPrimaryProducer(id)
+  if (!producer) {
+    const fallback = categoryBaseValue(category)
+    sellValueCache.set(id, fallback)
+    return fallback
+  }
+
+  seen.add(id)
+  const drop = producer.drops.find((candidate) => candidate.resourceId === id)
+  const outputAmount = Math.max(1, drop?.amount ?? 1)
+  const inputValue = (producer.costs ?? []).reduce(
+    (sum, cost) => sum + sellValueForResource(cost.resourceId, seen) * cost.amount,
+    0,
+  )
+  seen.delete(id)
+
+  const value = Math.max(
+    1,
+    Math.ceil((inputValue + valuePremiumForLevel(category, producer.levelRequired)) / outputAmount),
+  )
+  sellValueCache.set(id, value)
+  return value
+}
+
+function getPrimaryProducer(resourceId: string): TaskDefinition | null {
+  return ALL_TASKS
+    .filter((task) => task.drops.some((drop) => drop.resourceId === resourceId))
+    .sort((a, b) => a.levelRequired - b.levelRequired || a.id.localeCompare(b.id))[0] ?? null
+}
+
+function valuePremiumForLevel(category: string, level: number): number {
+  const base = categoryBaseValue(category)
+  return Math.round(base + level * base * 0.65 + Math.pow(level, 1.45) * base * 0.2)
+}
+
+function categoryBaseValue(category: string): number {
+  return CATEGORY_BASE_VALUES[category] ?? 1
 }

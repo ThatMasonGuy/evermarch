@@ -29,6 +29,8 @@ VITE_EVERMARCH_FORCE_LOCAL_PLATFORM=true
 npm run build
 ```
 
+The build runs `npm run validate:data` first. That gate checks the Evermarch skill/task data, lane rules, XP curve, resource costs, and progression economy before TypeScript and Vite run.
+
 The play-site pipeline builds Evermarch with:
 
 ```bash

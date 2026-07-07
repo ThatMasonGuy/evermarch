@@ -9,7 +9,9 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "vue-tsc -b && vite build",
+    "validate": "npm run validate:data",
+    "validate:data": "node scripts/validate-evermarch-data.mjs",
+    "build": "npm run validate:data && vue-tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
@@ -25,6 +27,7 @@
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^6.0.2",
     "@vue/tsconfig": "^0.8.1",
+    "esbuild": "^0.28.1",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",

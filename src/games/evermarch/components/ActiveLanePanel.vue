@@ -36,6 +36,10 @@
         <span class="active-rate-label">Active Rate:</span>
         <span class="active-rate-value">+{{ (task.drops[0]?.amount ?? 1) * task.activeBoostMultiplier }} / click</span>
       </div>
+      <div class="active-rate active-rate-cost" v-if="costLabel">
+        <span class="active-rate-label">Requires:</span>
+        <span class="active-rate-value">{{ costLabel }} / click</span>
+      </div>
       <div class="active-boost">
         Active boost: <strong>{{ task.activeBoostMultiplier }}x!</strong>
       </div>
@@ -109,6 +113,7 @@ import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
 import { performActiveAction } from '../engine/gameEngine'
+import { getResourceName } from '../data/resources'
 
 const store = useGameStore()
 const isPressed = ref(false)
@@ -119,6 +124,10 @@ const skillDef = computed(() => task.value ? SKILLS[task.value.skillId] : null)
 const skillLevel = computed(() => task.value ? store.getSkillLevel(task.value.skillId) : 0)
 const skillProgress = computed(() => task.value ? store.getSkillProgress(task.value.skillId) : 0)
 const xpToNext = computed(() => task.value ? store.getSkillXpToNext(task.value.skillId) : 0)
+const costLabel = computed(() => {
+  if (!task.value?.costs?.length) return ''
+  return formatTaskCosts(task.value.costs, task.value.activeBoostMultiplier)
+})
 
 const selectableTasks = computed(() => {
   return ALL_TASKS.filter((t) => t.allowedLanes.includes('active'))
@@ -214,6 +223,12 @@ function taskSelectorLabel(skillId: SkillId): string {
 
 function taskChoiceLabel(taskDef: TaskDefinition): string {
   return taskDef.name.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
+}
+
+function formatTaskCosts(costs: NonNullable<TaskDefinition['costs']>, multiplier: number): string {
+  return costs
+    .map((cost) => `${cost.amount * multiplier} ${getResourceName(cost.resourceId)}`)
+    .join(', ')
 }
 </script>
 
@@ -374,6 +389,9 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 .active-rate-boosted .active-rate-value {
   color: var(--color-accent-light);
+}
+.active-rate-cost .active-rate-value {
+  color: #fca5a5;
 }
 
 .active-boost {

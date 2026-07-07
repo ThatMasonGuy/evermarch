@@ -24,6 +24,8 @@ export interface TaskDefinition {
   xpPerAction: number
   /** Resources produced per action */
   drops: ResourceDrop[]
+  /** Resources consumed per action */
+  costs?: ResourceDrop[]
   /** Multiplier when performed in active lane */
   activeBoostMultiplier: number
   /** Which lanes this task can run in */
@@ -36,9 +38,11 @@ interface TaskTier {
   level: number
   resourceId: ResourceId
   amount?: number
+  costs?: ResourceDrop[]
 }
 
 const GATHERING_LEVELS = [1, 5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 99]
+const MINING_LEVELS = [1, ...GATHERING_LEVELS]
 const ARTISAN_LEVELS = [1, 6, 12, 18, 25, 35, 45, 55, 65, 75, 85, 92, 99]
 const FARMING_LEVELS = [1, 7, 15, 24, 35, 47, 59, 70, 80, 90, 99]
 
@@ -67,6 +71,7 @@ function makeTasks(
     baseInterval: intervalForTask(tier.level, baseInterval),
     xpPerAction: xpForTask(tier.level, baseXp),
     drops: [{ resourceId: tier.resourceId, amount: tier.amount ?? 1 }],
+    costs: tier.costs,
     activeBoostMultiplier,
     allowedLanes,
   }))
@@ -98,7 +103,17 @@ function tierRowsWithAmounts(rows: Array<[string, string, ResourceId, number?]>,
   }))
 }
 
+function withCosts(tasks: TaskDefinition[], costsByDropId: Record<ResourceId, ResourceDrop[]>): TaskDefinition[] {
+  return tasks.map((task) => {
+    const primaryDrop = task.drops[0]
+    if (!primaryDrop) return task
+    const costs = costsByDropId[primaryDrop.resourceId]
+    return costs ? { ...task, costs } : task
+  })
+}
+
 const miningTiers = tierRows([
+  ['rune_essence', 'Rune Essence', 'rune_essence'],
   ['copper', 'Copper Ore', 'copper_ore'],
   ['tin', 'Tin Ore', 'tin_ore'],
   ['iron', 'Iron Ore', 'iron_ore'],
@@ -112,7 +127,7 @@ const miningTiers = tierRows([
   ['moonstone', 'Moonstone', 'moonstone'],
   ['sunshard', 'Sunshard Crystal', 'sunshard_crystal'],
   ['everite', 'Everite Core', 'everite_core'],
-], GATHERING_LEVELS)
+], MINING_LEVELS)
 
 const woodcuttingTiers = tierRows([
   ['oak', 'Oak', 'oak_log'],
@@ -256,16 +271,100 @@ const runecraftingTiers = tierRowsWithAmounts([
   ['astral', 'Astral Runes', 'astral_rune', 2],
 ], ARTISAN_LEVELS)
 
+const logCosts: Record<ResourceId, ResourceDrop[]> = {
+  oak_ash: [{ resourceId: 'oak_log', amount: 1 }],
+  willow_ash: [{ resourceId: 'willow_log', amount: 1 }],
+  maple_ash: [{ resourceId: 'maple_log', amount: 1 }],
+  yew_ash: [{ resourceId: 'yew_log', amount: 1 }],
+  ashwood_ash: [{ resourceId: 'ashwood_log', amount: 1 }],
+  storm_cedar_ember: [{ resourceId: 'storm_cedar_log', amount: 1 }],
+  ironbark_ember: [{ resourceId: 'ironbark_log', amount: 1 }],
+  silverleaf_ember: [{ resourceId: 'silverleaf_log', amount: 1 }],
+  wyrmwood_ember: [{ resourceId: 'wyrmwood_log', amount: 1 }],
+  sunroot_ember: [{ resourceId: 'sunroot_log', amount: 1 }],
+  moonwillow_ember: [{ resourceId: 'moonwillow_log', amount: 1 }],
+  starfall_ember: [{ resourceId: 'starfall_timber', amount: 1 }],
+  everbranch_ember: [{ resourceId: 'everbranch_log', amount: 1 }],
+}
+
+const fishCosts: Record<ResourceId, ResourceDrop[]> = {
+  cooked_shrimp: [{ resourceId: 'raw_shrimp', amount: 1 }],
+  cooked_sardine: [{ resourceId: 'raw_sardine', amount: 1 }],
+  cooked_trout: [{ resourceId: 'raw_trout', amount: 1 }],
+  cooked_salmon: [{ resourceId: 'raw_salmon', amount: 1 }],
+  cooked_pike: [{ resourceId: 'raw_pike', amount: 1 }],
+  cooked_bass: [{ resourceId: 'raw_bass', amount: 1 }],
+  cooked_lobster: [{ resourceId: 'raw_lobster', amount: 1 }],
+  cooked_swordfish: [{ resourceId: 'raw_swordfish', amount: 1 }],
+  cooked_manta: [{ resourceId: 'raw_manta', amount: 1 }],
+  cooked_anglerfish: [{ resourceId: 'raw_anglerfish', amount: 1 }],
+  cooked_moonfin: [{ resourceId: 'raw_moonfin', amount: 1 }],
+  cooked_abyssal_eel: [{ resourceId: 'raw_abyssal_eel', amount: 1 }],
+  cooked_leviathan: [{ resourceId: 'raw_leviathan', amount: 1 }],
+}
+
+const smithingCosts: Record<ResourceId, ResourceDrop[]> = {
+  bronze_fittings: [{ resourceId: 'copper_ore', amount: 1 }, { resourceId: 'tin_ore', amount: 1 }],
+  iron_fittings: [{ resourceId: 'iron_ore', amount: 1 }],
+  steel_frame: [{ resourceId: 'iron_ore', amount: 1 }, { resourceId: 'coal', amount: 1 }],
+  silver_filigree: [{ resourceId: 'silver_ore', amount: 1 }],
+  gold_setting: [{ resourceId: 'gold_ore', amount: 1 }],
+  mithril_bracing: [{ resourceId: 'mithril_ore', amount: 1 }],
+  adamantite_plate: [{ resourceId: 'adamantite_ore', amount: 1 }],
+  runite_mechanism: [{ resourceId: 'runite_ore', amount: 1 }],
+  starmetal_assembly: [{ resourceId: 'starmetal_ore', amount: 1 }],
+  moonstone_inlay: [{ resourceId: 'moonstone', amount: 1 }],
+  sunshard_frame: [{ resourceId: 'sunshard_crystal', amount: 1 }],
+  everite_crucible: [{ resourceId: 'everite_core', amount: 1 }],
+  masterwork_core: [{ resourceId: 'everite_core', amount: 1 }, { resourceId: 'sunshard_crystal', amount: 1 }],
+}
+
+const fletchingCosts: Record<ResourceId, ResourceDrop[]> = {
+  oak_arrows: [{ resourceId: 'oak_log', amount: 1 }],
+  willow_shortbow: [{ resourceId: 'willow_log', amount: 1 }],
+  maple_longbow: [{ resourceId: 'maple_log', amount: 1 }],
+  yew_longbow: [{ resourceId: 'yew_log', amount: 1 }],
+  ashwood_bolts: [{ resourceId: 'ashwood_log', amount: 1 }],
+  storm_cedar_bow: [{ resourceId: 'storm_cedar_log', amount: 1 }],
+  ironbark_crossbow: [{ resourceId: 'ironbark_log', amount: 1 }],
+  silverleaf_arrows: [{ resourceId: 'silverleaf_log', amount: 1 }],
+  wyrmwood_bow: [{ resourceId: 'wyrmwood_log', amount: 1 }],
+  sunroot_bolts: [{ resourceId: 'sunroot_log', amount: 1 }],
+  moonwillow_bow: [{ resourceId: 'moonwillow_log', amount: 1 }],
+  starfall_arrows: [{ resourceId: 'starfall_timber', amount: 1 }],
+  everbranch_bow: [{ resourceId: 'everbranch_log', amount: 1 }],
+}
+
+const craftingCosts: Record<ResourceId, ResourceDrop[]> = {
+  copper_charm: [{ resourceId: 'copper_ore', amount: 1 }],
+  tin_locket: [{ resourceId: 'tin_ore', amount: 1 }],
+  iron_ring: [{ resourceId: 'iron_ore', amount: 1 }],
+  silver_amulet: [{ resourceId: 'silver_ore', amount: 1 }],
+  gold_necklace: [{ resourceId: 'gold_ore', amount: 1 }],
+  mithril_brooch: [{ resourceId: 'mithril_ore', amount: 1 }],
+  adamantite_clasp: [{ resourceId: 'adamantite_ore', amount: 1 }],
+  runite_siglet: [{ resourceId: 'runite_ore', amount: 1 }],
+  starmetal_compass: [{ resourceId: 'starmetal_ore', amount: 1 }],
+  moonstone_relic: [{ resourceId: 'moonstone', amount: 1 }],
+  sunshard_prism: [{ resourceId: 'sunshard_crystal', amount: 1 }],
+  everite_totem: [{ resourceId: 'everite_core', amount: 1 }],
+  masterwork_idol: [{ resourceId: 'masterwork_core', amount: 1 }],
+}
+
+const runeCosts = Object.fromEntries(
+  runecraftingTiers.map((tier) => [tier.resourceId, [{ resourceId: 'rune_essence', amount: 1 }]]),
+) as Record<ResourceId, ResourceDrop[]>
+
 export const MINING_TASKS = makeTasks('mining', 'mine', miningTiers, ['active', 'idle'], 8, 3900)
 export const WOODCUTTING_TASKS = makeTasks('woodcutting', 'chop', woodcuttingTiers, ['active', 'idle'], 8, 3900)
 export const FISHING_TASKS = makeTasks('fishing', 'fish', fishingTiers, ['active', 'idle'], 7, 4300)
-export const FIREMAKING_TASKS = makeTasks('firemaking', 'kindle', firemakingTiers, ['active', 'idle'], 9, 3700)
-export const COOKING_TASKS = makeTasks('cooking', 'cook', cookingTiers, ['active', 'idle'], 9, 4200)
-export const SMITHING_TASKS = makeTasks('smithing', 'forge', smithingTiers, ['active', 'idle'], 11, 4700)
+export const FIREMAKING_TASKS = withCosts(makeTasks('firemaking', 'kindle', firemakingTiers, ['active', 'idle'], 9, 3700), logCosts)
+export const COOKING_TASKS = withCosts(makeTasks('cooking', 'cook', cookingTiers, ['active', 'idle'], 9, 4200), fishCosts)
+export const SMITHING_TASKS = withCosts(makeTasks('smithing', 'forge', smithingTiers, ['active', 'idle'], 11, 4700), smithingCosts)
 export const FARMING_TASKS = makeTasks('farming', 'grow', farmingTiers, ['background'], 10, 9000, 1)
-export const FLETCHING_TASKS = makeTasks('fletching', 'shape', fletchingTiers, ['active', 'idle'], 9, 3900)
-export const CRAFTING_TASKS = makeTasks('crafting', 'craft', craftingTiers, ['active', 'idle'], 10, 4300)
-export const RUNECRAFTING_TASKS = makeTasks('runecrafting', 'bind', runecraftingTiers, ['active', 'idle'], 12, 5000)
+export const FLETCHING_TASKS = withCosts(makeTasks('fletching', 'shape', fletchingTiers, ['active', 'idle'], 9, 3900), fletchingCosts)
+export const CRAFTING_TASKS = withCosts(makeTasks('crafting', 'craft', craftingTiers, ['active', 'idle'], 10, 4300), craftingCosts)
+export const RUNECRAFTING_TASKS = withCosts(makeTasks('runecrafting', 'bind', runecraftingTiers, ['active', 'idle'], 12, 5000), runeCosts)
 
 export const ALL_TASKS: TaskDefinition[] = [
   ...WOODCUTTING_TASKS,
@@ -282,6 +381,25 @@ export const ALL_TASKS: TaskDefinition[] = [
 
 export function getTaskById(id: string): TaskDefinition | undefined {
   return ALL_TASKS.find((t) => t.id === id)
+}
+
+const LEGACY_TASK_IDS: Record<string, string> = {
+  fish_shrimp: 'fish_shallow_coast',
+  fish_trout: 'fish_cold_stream',
+  fish_salmon: 'fish_river_bend',
+}
+
+export function getDefaultTaskIdForLane(laneType: LaneType): string {
+  if (laneType === 'active') return 'mine_rune_essence'
+  if (laneType === 'idle') return 'chop_oak'
+  return 'grow_potato'
+}
+
+export function normalizeTaskId(taskId: string | null | undefined, laneType: LaneType): string {
+  const candidate = taskId ? (LEGACY_TASK_IDS[taskId] ?? taskId) : getDefaultTaskIdForLane(laneType)
+  const task = getTaskById(candidate)
+  if (task?.allowedLanes.includes(laneType)) return candidate
+  return getDefaultTaskIdForLane(laneType)
 }
 
 export function getTasksForSkill(skillId: SkillId): TaskDefinition[] {

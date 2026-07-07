@@ -8,7 +8,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { SkillId, LaneType } from '../data/skills'
 import { SKILL_LIST } from '../data/skills'
-import { getTaskById } from '../data/tasks'
+import { getDefaultTaskIdForLane, getTaskById, normalizeTaskId } from '../data/tasks'
 import { levelForXp, xpProgressFraction, xpToNextLevel } from '../data/xp'
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -70,9 +70,9 @@ export const useGameStore = defineStore('evermarch-game', () => {
   const gold = ref(0)
 
   const lanes = ref<Record<LaneType, LaneState>>({
-    active: { type: 'active', taskId: 'mine_copper', progress: 0 },
-    idle: { type: 'idle', taskId: 'fish_shrimp', progress: 0 },
-    background: { type: 'background', taskId: 'grow_potato', progress: 0 },
+    active: { type: 'active', taskId: getDefaultTaskIdForLane('active'), progress: 0 },
+    idle: { type: 'idle', taskId: getDefaultTaskIdForLane('idle'), progress: 0 },
+    background: { type: 'background', taskId: getDefaultTaskIdForLane('background'), progress: 0 },
   })
 
   const activityLog = ref<LogEntry[]>([])
@@ -133,19 +133,31 @@ export const useGameStore = defineStore('evermarch-game', () => {
     inventory.value[resourceId] = (inventory.value[resourceId] ?? 0) + amount
   }
 
+  function removeItem(resourceId: string, amount: number): boolean {
+    const current = inventory.value[resourceId] ?? 0
+    if (current < amount) return false
+
+    const next = current - amount
+    if (next > 0) {
+      inventory.value[resourceId] = next
+    } else {
+      delete inventory.value[resourceId]
+    }
+
+    return true
+  }
+
   function addGold(amount: number) {
     gold.value += amount
   }
 
   function setLaneTask(laneType: LaneType, taskId: string | null) {
     const lane = lanes.value[laneType]
-    lane.taskId = taskId
+    lane.taskId = normalizeTaskId(taskId, laneType)
     lane.progress = 0
 
-    if (taskId) {
-      const task = getTaskById(taskId)
-      addLog(`Started ${task?.name ?? taskId} (${laneType})`, 'system')
-    }
+    const task = getTaskById(lane.taskId)
+    addLog(`Started ${task?.name ?? lane.taskId} (${laneType})`, 'system')
   }
 
   // ── Activity Log ──
@@ -222,16 +234,18 @@ export const useGameStore = defineStore('evermarch-game', () => {
     // Restore lanes
     if (data.lanes) {
       if (data.lanes.active) {
-        lanes.value.active.taskId = data.lanes.active.taskId
+        lanes.value.active.taskId = normalizeTaskId(data.lanes.active.taskId, 'active')
         lanes.value.active.progress = 0 // active doesn't persist progress
       }
       if (data.lanes.idle) {
-        lanes.value.idle.taskId = data.lanes.idle.taskId
-        lanes.value.idle.progress = data.lanes.idle.progress ?? 0
+        const taskId = normalizeTaskId(data.lanes.idle.taskId, 'idle')
+        lanes.value.idle.taskId = taskId
+        lanes.value.idle.progress = taskId === data.lanes.idle.taskId ? (data.lanes.idle.progress ?? 0) : 0
       }
       if (data.lanes.background) {
-        lanes.value.background.taskId = data.lanes.background.taskId
-        lanes.value.background.progress = data.lanes.background.progress ?? 0
+        const taskId = normalizeTaskId(data.lanes.background.taskId, 'background')
+        lanes.value.background.taskId = taskId
+        lanes.value.background.progress = taskId === data.lanes.background.taskId ? (data.lanes.background.progress ?? 0) : 0
       }
     }
 
@@ -247,9 +261,9 @@ export const useGameStore = defineStore('evermarch-game', () => {
     inventory.value = {}
     skills.value = SKILL_LIST.map((s) => ({ id: s.id, xp: 0 }))
     lanes.value = {
-      active: { type: 'active', taskId: 'mine_copper', progress: 0 },
-      idle: { type: 'idle', taskId: 'fish_shrimp', progress: 0 },
-      background: { type: 'background', taskId: 'grow_potato', progress: 0 },
+      active: { type: 'active', taskId: getDefaultTaskIdForLane('active'), progress: 0 },
+      idle: { type: 'idle', taskId: getDefaultTaskIdForLane('idle'), progress: 0 },
+      background: { type: 'background', taskId: getDefaultTaskIdForLane('background'), progress: 0 },
     }
     activityLog.value = []
     logCounter = 0
@@ -280,6 +294,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     // Mutations
     addXp,
     addItem,
+    removeItem,
     addGold,
     setLaneTask,
     addLog,

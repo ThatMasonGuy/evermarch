@@ -61,7 +61,7 @@ function categoryForResource(id: string): string {
   if (id.includes('fittings') || id.includes('frame') || id.includes('plate') || id.includes('mechanism') || id.includes('crucible')) return 'metalwork'
   if (id.includes('arrow') || id.includes('bow') || id.includes('bolt') || id.includes('crossbow')) return 'fletched'
   if (id.includes('charm') || id.includes('locket') || id.includes('ring') || id.includes('amulet') || id.includes('necklace') || id.includes('relic') || id.includes('idol')) return 'crafted'
-  if (id.endsWith('_rune')) return 'rune'
+  if (id === 'rune_essence' || id.endsWith('_rune')) return 'rune'
   if (['barley', 'sunleaf', 'mooncap', 'silverthorn', 'starflower', 'everroot', 'worldseed'].includes(id)) return 'crop'
   return 'misc'
 }

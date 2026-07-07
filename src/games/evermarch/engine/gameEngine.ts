@@ -9,10 +9,10 @@
  */
 
 import { useGameStore } from '../stores/gameStore'
-import { getTaskById } from '../data/tasks'
+import { getTaskById, type ResourceDrop, type TaskDefinition } from '../data/tasks'
 import { getResourceName } from '../data/resources'
 import { saveLocal } from './saveSystem'
-import type { SkillId } from '../data/skills'
+import type { LaneType } from '../data/skills'
 
 const TICK_INTERVAL = 100 // ms — game ticks 10 times per second
 const AUTO_SAVE_INTERVAL = 30_000 // auto-save every 30 seconds
@@ -20,6 +20,14 @@ const AUTO_SAVE_INTERVAL = 30_000 // auto-save every 30 seconds
 let tickHandle: ReturnType<typeof setInterval> | null = null
 let lastTickTime = 0
 let lastAutoSave = 0
+
+type PassiveLaneType = Extract<LaneType, 'idle' | 'background'>
+type ActionSource = 'active' | PassiveLaneType | 'offline'
+
+interface ActionResult {
+  xp: number
+  drops: ResourceDrop[]
+}
 
 /**
  * Start the game engine tick loop.
@@ -74,7 +82,7 @@ function tick(deltaMs: number) {
 }
 
 function advanceLane(
-  laneType: 'idle' | 'background',
+  laneType: PassiveLaneType,
   deltaMs: number,
   store: ReturnType<typeof useGameStore>
 ) {
@@ -92,7 +100,11 @@ function advanceLane(
   // Complete actions
   while (lane.progress >= task.baseInterval) {
     lane.progress -= task.baseInterval
-    completeAction(task.skillId, task.id, store, laneType)
+    const result = completeAction(task, store, laneType)
+    if (!result) {
+      lane.progress = 0
+      break
+    }
   }
 }
 
@@ -100,18 +112,29 @@ function advanceLane(
  * Complete one action cycle for a task — grant XP + drops.
  */
 function completeAction(
-  skillId: SkillId,
-  taskId: string,
+  task: TaskDefinition,
   store: ReturnType<typeof useGameStore>,
-  source: string,
-  silent = false
-) {
-  const task = getTaskById(taskId)
-  if (!task) return
+  source: ActionSource,
+  silent = false,
+  multiplier = 1
+): ActionResult | null {
+  if (!canPayCosts(task, store, multiplier)) {
+    if (!silent) {
+      store.addLog(`${missingCostPrefix(source)} ${formatCosts(task.costs ?? [], multiplier)} for ${task.name}`, 'system')
+    }
+    return null
+  }
 
-  store.addXp(skillId, task.xpPerAction)
+  spendTaskCosts(task, store, multiplier)
 
-  for (const drop of task.drops) {
+  const xp = task.xpPerAction * multiplier
+  store.addXp(task.skillId, xp)
+  const gainedDrops = task.drops.map((drop) => ({
+    resourceId: drop.resourceId,
+    amount: drop.amount * multiplier,
+  }))
+
+  for (const drop of gainedDrops) {
     store.addItem(drop.resourceId, drop.amount)
 
     if (!silent) {
@@ -122,6 +145,40 @@ function completeAction(
       )
     }
   }
+
+  return { xp, drops: gainedDrops }
+}
+
+function canPayCosts(
+  task: TaskDefinition,
+  store: ReturnType<typeof useGameStore>,
+  multiplier: number
+): boolean {
+  return (task.costs ?? []).every((cost) =>
+    store.getItemCount(cost.resourceId) >= cost.amount * multiplier
+  )
+}
+
+function spendTaskCosts(
+  task: TaskDefinition,
+  store: ReturnType<typeof useGameStore>,
+  multiplier: number
+) {
+  for (const cost of task.costs ?? []) {
+    store.removeItem(cost.resourceId, cost.amount * multiplier)
+  }
+}
+
+function formatCosts(costs: ResourceDrop[], multiplier: number): string {
+  return costs
+    .map((cost) => `${cost.amount * multiplier} ${getResourceName(cost.resourceId)}`)
+    .join(', ')
+}
+
+function missingCostPrefix(source: ActionSource): string {
+  if (source === 'idle') return 'Routine needs'
+  if (source === 'background') return 'Background needs'
+  return 'Need'
 }
 
 /**
@@ -139,15 +196,7 @@ export function performActiveAction() {
   const skillLevel = store.getSkillLevel(task.skillId)
   if (skillLevel < task.levelRequired) return
 
-  // Grant boosted rewards
-  const multiplier = task.activeBoostMultiplier
-  store.addXp(task.skillId, task.xpPerAction * multiplier)
-
-  for (const drop of task.drops) {
-    const amount = drop.amount * multiplier
-    store.addItem(drop.resourceId, amount)
-    store.addLog(`+${amount} ${getResourceName(drop.resourceId)}`, 'gain')
-  }
+  completeAction(task, store, 'active', false, task.activeBoostMultiplier)
 }
 
 /**
@@ -181,7 +230,7 @@ export function processOfflineProgress(lastSavedAt: number) {
   for (const [resourceId, amount] of Object.entries(resourcesGained)) {
     if (amount > 0) {
       store.addLog(
-        `Offline progress: +${amount} ${getResourceName(resourceId as any)}`,
+        `Offline progress: +${amount} ${getResourceName(resourceId)}`,
         'offline'
       )
     }
@@ -197,7 +246,7 @@ export function processOfflineProgress(lastSavedAt: number) {
 }
 
 function processLaneOffline(
-  laneType: 'idle' | 'background',
+  laneType: PassiveLaneType,
   offlineMs: number,
   store: ReturnType<typeof useGameStore>,
   resourcesGained: Record<string, number>,
@@ -218,16 +267,17 @@ function processLaneOffline(
 
   if (actionCount <= 0) return
 
-  // Grant XP
-  const xp = task.xpPerAction * actionCount
-  store.addXp(task.skillId, xp)
-  onXp(xp)
+  for (let index = 0; index < actionCount; index++) {
+    const result = completeAction(task, store, 'offline', true)
+    if (!result) {
+      lane.progress = 0
+      break
+    }
 
-  // Grant drops
-  for (const drop of task.drops) {
-    const amount = drop.amount * actionCount
-    store.addItem(drop.resourceId, amount)
-    resourcesGained[drop.resourceId] = (resourcesGained[drop.resourceId] ?? 0) + amount
+    onXp(result.xp)
+    for (const drop of result.drops) {
+      resourcesGained[drop.resourceId] = (resourcesGained[drop.resourceId] ?? 0) + drop.amount
+    }
   }
 }
 

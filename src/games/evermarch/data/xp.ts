@@ -6,12 +6,13 @@
 const MAX_LEVEL = 99
 
 /** Pre-computed cumulative XP required for each level (index = level) */
-const XP_TABLE: number[] = [0] // level 0 = 0 xp (unused)
+const XP_TABLE: number[] = [0, 0] // level 1 starts at 0 XP
 
 function buildXpTable() {
-  for (let level = 1; level <= MAX_LEVEL; level++) {
+  for (let level = 2; level <= MAX_LEVEL; level++) {
     // Each level costs roughly: floor(level + 300 * 2^(level/7)) / 4
-    const points = Math.floor((level + 300 * Math.pow(2, level / 7)) / 4)
+    const previousLevel = level - 1
+    const points = Math.floor((previousLevel + 300 * Math.pow(2, previousLevel / 7)) / 4)
     const prev = XP_TABLE[level - 1] ?? 0
     XP_TABLE.push(prev + points)
   }

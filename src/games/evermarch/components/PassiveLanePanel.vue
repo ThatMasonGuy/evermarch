@@ -28,8 +28,15 @@
           <div class="passive-xp-row">
             <span>+{{ task.xpPerAction }} XP / action</span>
           </div>
-          <div class="passive-cost-row" v-if="costLabel">
-            Uses {{ costLabel }} / action
+          <div
+            class="passive-cost-row"
+            :class="{
+              'passive-cost-row-ready': costReadiness.length > 0 && !hasCostBlockers,
+              'passive-cost-row-blocked': hasCostBlockers,
+            }"
+            v-if="costLabel"
+          >
+            {{ costStatusLabel }} {{ costLabel }} / action
           </div>
         </div>
         <div class="passive-progress-pct">{{ Math.floor(progressPct) }}%</div>
@@ -110,7 +117,7 @@ import { BookOpen, Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer } from
 import { useGameStore } from '../stores/gameStore'
 import { getTaskById, ALL_TASKS, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
-import { getResourceName } from '../data/resources'
+import { formatCostReadiness, getCostReadiness, hasMissingCosts } from '../utils/taskCosts'
 
 const props = defineProps<{
   laneType: 'idle' | 'background'
@@ -125,10 +132,13 @@ const task = computed(() => lane.value.taskId ? getTaskById(lane.value.taskId) :
 const skillDef = computed(() => task.value ? SKILLS[task.value.skillId] : null)
 const skillLevel = computed(() => task.value ? store.getSkillLevel(task.value.skillId) : 0)
 const skillProgress = computed(() => task.value ? store.getSkillProgress(task.value.skillId) : 0)
-const costLabel = computed(() => {
-  if (!task.value?.costs?.length) return ''
-  return formatTaskCosts(task.value.costs)
+const costReadiness = computed(() => {
+  if (!task.value?.costs?.length) return []
+  return getCostReadiness(task.value.costs, store.getItemCount)
 })
+const costLabel = computed(() => formatCostReadiness(costReadiness.value))
+const hasCostBlockers = computed(() => hasMissingCosts(costReadiness.value))
+const costStatusLabel = computed(() => hasCostBlockers.value ? 'Waiting for' : 'Ready with')
 
 const progressPct = computed(() => {
   if (!task.value) return 0
@@ -212,11 +222,6 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   return taskDef.name.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
 }
 
-function formatTaskCosts(costs: NonNullable<TaskDefinition['costs']>): string {
-  return costs
-    .map((cost) => `${cost.amount} ${getResourceName(cost.resourceId)}`)
-    .join(', ')
-}
 </script>
 
 <style scoped>
@@ -326,6 +331,12 @@ function formatTaskCosts(costs: NonNullable<TaskDefinition['costs']>): string {
 
 .passive-cost-row {
   font-size: 11px;
+  color: var(--color-text-muted);
+}
+.passive-cost-row-ready {
+  color: #86efac;
+}
+.passive-cost-row-blocked {
   color: #fca5a5;
 }
 

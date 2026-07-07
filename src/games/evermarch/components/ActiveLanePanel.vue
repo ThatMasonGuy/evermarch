@@ -36,7 +36,11 @@
         <span class="active-rate-label">Active Rate:</span>
         <span class="active-rate-value">+{{ (task.drops[0]?.amount ?? 1) * task.activeBoostMultiplier }} / click</span>
       </div>
-      <div class="active-rate active-rate-cost" v-if="costLabel">
+      <div
+        class="active-rate active-rate-cost"
+        :class="{ 'active-rate-cost-blocked': hasCostBlockers }"
+        v-if="costLabel"
+      >
         <span class="active-rate-label">Requires:</span>
         <span class="active-rate-value">{{ costLabel }} / click</span>
       </div>
@@ -49,7 +53,11 @@
     <button
       v-if="task"
       class="active-action-btn"
-      :class="{ 'active-action-btn-pressed': isPressed }"
+      :class="{
+        'active-action-btn-pressed': isPressed,
+        'active-action-btn-blocked': hasCostBlockers,
+      }"
+      :title="actionButtonTitle"
       @mousedown="onPress"
       @mouseup="isPressed = false"
       @mouseleave="isPressed = false"
@@ -64,6 +72,9 @@
       <Sprout v-else :size="20" />
       <span>{{ actionLabel }}</span>
     </button>
+    <p class="active-blocked-hint" v-if="hasCostBlockers">
+      Waiting for {{ missingCostLabel }}.
+    </p>
 
     <!-- Task Selector -->
     <div class="active-task-select" v-if="selectableSkills.length > 0">
@@ -113,7 +124,7 @@ import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
 import { performActiveAction } from '../engine/gameEngine'
-import { getResourceName } from '../data/resources'
+import { formatCostReadiness, getCostReadiness, hasMissingCosts } from '../utils/taskCosts'
 
 const store = useGameStore()
 const isPressed = ref(false)
@@ -124,9 +135,18 @@ const skillDef = computed(() => task.value ? SKILLS[task.value.skillId] : null)
 const skillLevel = computed(() => task.value ? store.getSkillLevel(task.value.skillId) : 0)
 const skillProgress = computed(() => task.value ? store.getSkillProgress(task.value.skillId) : 0)
 const xpToNext = computed(() => task.value ? store.getSkillXpToNext(task.value.skillId) : 0)
-const costLabel = computed(() => {
-  if (!task.value?.costs?.length) return ''
-  return formatTaskCosts(task.value.costs, task.value.activeBoostMultiplier)
+const costReadiness = computed(() => {
+  if (!task.value?.costs?.length) return []
+  return getCostReadiness(task.value.costs, store.getItemCount, task.value.activeBoostMultiplier)
+})
+const costLabel = computed(() => formatCostReadiness(costReadiness.value))
+const hasCostBlockers = computed(() => hasMissingCosts(costReadiness.value))
+const missingCostLabel = computed(() => {
+  return formatCostReadiness(costReadiness.value.filter((cost) => !cost.ready))
+})
+const actionButtonTitle = computed(() => {
+  if (!hasCostBlockers.value) return ''
+  return `Need ${missingCostLabel.value}`
 })
 
 const selectableTasks = computed(() => {
@@ -225,11 +245,6 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   return taskDef.name.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
 }
 
-function formatTaskCosts(costs: NonNullable<TaskDefinition['costs']>, multiplier: number): string {
-  return costs
-    .map((cost) => `${cost.amount * multiplier} ${getResourceName(cost.resourceId)}`)
-    .join(', ')
-}
 </script>
 
 <style scoped>
@@ -391,6 +406,9 @@ function formatTaskCosts(costs: NonNullable<TaskDefinition['costs']>, multiplier
   color: var(--color-accent-light);
 }
 .active-rate-cost .active-rate-value {
+  color: #86efac;
+}
+.active-rate-cost-blocked .active-rate-value {
   color: #fca5a5;
 }
 
@@ -448,6 +466,34 @@ function formatTaskCosts(costs: NonNullable<TaskDefinition['costs']>, multiplier
     rgba(52, 211, 153, 0.12) 100%
   );
   box-shadow: 0 0 24px rgba(52, 211, 153, 0.3);
+}
+
+.active-action-btn-blocked {
+  border-color: rgba(248, 113, 113, 0.75);
+  color: #fecaca;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 113, 113, 0.16) 0%,
+    rgba(248, 113, 113, 0.06) 100%
+  );
+}
+
+.active-action-btn-blocked:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(248, 113, 113, 0.22) 0%,
+    rgba(248, 113, 113, 0.1) 100%
+  );
+  box-shadow: 0 0 20px rgba(248, 113, 113, 0.18);
+}
+
+.active-blocked-hint {
+  margin-top: -12px;
+  max-width: 360px;
+  text-align: center;
+  color: #fecaca;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 /* Task Selector */

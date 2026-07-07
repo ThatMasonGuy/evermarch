@@ -125,6 +125,25 @@ for (const task of tasks.ALL_TASKS) {
   check(outputValue > inputValue, `${taskLabel(task)} should be worth more than its inputs`)
 }
 
+const farmingResourceIds = new Set(tasks.FARMING_TASKS.flatMap((task) => task.drops.map((drop) => drop.resourceId)))
+for (const [index, task] of [...tasks.COOKING_TASKS].sort((a, b) => a.levelRequired - b.levelRequired).entries()) {
+  const costIds = (task.costs ?? []).map((cost) => cost.resourceId)
+  check(costIds.some((resourceId) => resourceId.startsWith('raw_')), `${taskLabel(task)} must use raw fish`)
+
+  if (index > 0) {
+    const cropCost = (task.costs ?? []).find((cost) => farmingResourceIds.has(cost.resourceId))
+    const cropTask = cropCost
+      ? tasks.FARMING_TASKS.find((candidate) => candidate.drops.some((drop) => drop.resourceId === cropCost.resourceId))
+      : null
+
+    check(cropCost, `${taskLabel(task)} must use a Farming ingredient`)
+    check(
+      !cropTask || cropTask.levelRequired <= task.levelRequired,
+      `${taskLabel(task)} uses ${cropCost?.resourceId}, which unlocks after the recipe`,
+    )
+  }
+}
+
 for (const skillId of expectedSkillIds) {
   const skill = skills.SKILLS[skillId]
   const skillTasks = tasks.getTasksForSkill(skillId)

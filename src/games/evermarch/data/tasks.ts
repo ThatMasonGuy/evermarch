@@ -289,18 +289,18 @@ const logCosts: Record<ResourceId, ResourceDrop[]> = {
 
 const fishCosts: Record<ResourceId, ResourceDrop[]> = {
   cooked_shrimp: [{ resourceId: 'raw_shrimp', amount: 1 }],
-  cooked_sardine: [{ resourceId: 'raw_sardine', amount: 1 }],
-  cooked_trout: [{ resourceId: 'raw_trout', amount: 1 }],
-  cooked_salmon: [{ resourceId: 'raw_salmon', amount: 1 }],
-  cooked_pike: [{ resourceId: 'raw_pike', amount: 1 }],
-  cooked_bass: [{ resourceId: 'raw_bass', amount: 1 }],
-  cooked_lobster: [{ resourceId: 'raw_lobster', amount: 1 }],
-  cooked_swordfish: [{ resourceId: 'raw_swordfish', amount: 1 }],
-  cooked_manta: [{ resourceId: 'raw_manta', amount: 1 }],
-  cooked_anglerfish: [{ resourceId: 'raw_anglerfish', amount: 1 }],
-  cooked_moonfin: [{ resourceId: 'raw_moonfin', amount: 1 }],
-  cooked_abyssal_eel: [{ resourceId: 'raw_abyssal_eel', amount: 1 }],
-  cooked_leviathan: [{ resourceId: 'raw_leviathan', amount: 1 }],
+  cooked_sardine: [{ resourceId: 'raw_sardine', amount: 1 }, { resourceId: 'potato', amount: 1 }],
+  cooked_trout: [{ resourceId: 'raw_trout', amount: 1 }, { resourceId: 'onion', amount: 1 }],
+  cooked_salmon: [{ resourceId: 'raw_salmon', amount: 1 }, { resourceId: 'tomato', amount: 1 }],
+  cooked_pike: [{ resourceId: 'raw_pike', amount: 1 }, { resourceId: 'wheat', amount: 1 }],
+  cooked_bass: [{ resourceId: 'raw_bass', amount: 1 }, { resourceId: 'barley', amount: 1 }],
+  cooked_lobster: [{ resourceId: 'raw_lobster', amount: 1 }, { resourceId: 'barley', amount: 1 }],
+  cooked_swordfish: [{ resourceId: 'raw_swordfish', amount: 1 }, { resourceId: 'sunleaf', amount: 1 }],
+  cooked_manta: [{ resourceId: 'raw_manta', amount: 1 }, { resourceId: 'mooncap', amount: 1 }],
+  cooked_anglerfish: [{ resourceId: 'raw_anglerfish', amount: 1 }, { resourceId: 'silverthorn', amount: 1 }],
+  cooked_moonfin: [{ resourceId: 'raw_moonfin', amount: 1 }, { resourceId: 'starflower', amount: 1 }],
+  cooked_abyssal_eel: [{ resourceId: 'raw_abyssal_eel', amount: 1 }, { resourceId: 'everroot', amount: 1 }],
+  cooked_leviathan: [{ resourceId: 'raw_leviathan', amount: 1 }, { resourceId: 'worldseed', amount: 1 }],
 }
 
 const smithingCosts: Record<ResourceId, ResourceDrop[]> = {

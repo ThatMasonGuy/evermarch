@@ -9,6 +9,7 @@ import { ref, computed } from 'vue'
 import type { SkillId, LaneType } from '../data/skills'
 import { SKILL_LIST } from '../data/skills'
 import { getDefaultTaskIdForLane, getTaskById, normalizeTaskId } from '../data/tasks'
+import { getResourceDefinition } from '../data/resources'
 import { levelForXp, xpProgressFraction, xpToNextLevel } from '../data/xp'
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -149,6 +150,28 @@ export const useGameStore = defineStore('evermarch-game', () => {
 
   function addGold(amount: number) {
     gold.value += amount
+  }
+
+  function sellItem(resourceId: string, amount: number): number {
+    const quantity = Math.floor(amount)
+    if (quantity <= 0) return 0
+
+    const resource = getResourceDefinition(resourceId)
+    if (resource.sellValue <= 0) return 0
+
+    const sold = Math.min(quantity, getItemCount(resourceId))
+    if (sold <= 0) return 0
+
+    if (!removeItem(resourceId, sold)) return 0
+
+    const goldGained = resource.sellValue * sold
+    addGold(goldGained)
+    addLog(
+      `Sold ${sold.toLocaleString()} ${resource.name} for ${goldGained.toLocaleString()} gold`,
+      'system'
+    )
+
+    return goldGained
   }
 
   function setLaneTask(laneType: LaneType, taskId: string | null) {
@@ -296,6 +319,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     addItem,
     removeItem,
     addGold,
+    sellItem,
     setLaneTask,
     addLog,
     // Save

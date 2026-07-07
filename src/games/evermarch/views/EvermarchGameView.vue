@@ -32,15 +32,9 @@
           <InventoryPanel />
         </div>
 
-        <!-- World (Placeholder) -->
-        <div v-else-if="activeTab === 'world'" class="em-placeholder animate-fade-in">
-          <div class="em-placeholder-icon">
-            <MapPin :size="32" />
-          </div>
-          <h2 class="em-placeholder-title">World</h2>
-          <p class="em-placeholder-desc">
-            Explore regions and discover new areas. This system is coming in a future update.
-          </p>
+        <!-- World View -->
+        <div v-else-if="activeTab === 'world'" class="animate-fade-in">
+          <WorldPanel />
         </div>
 
         <!-- Delve (Placeholder) -->
@@ -66,7 +60,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { MapPin, Swords } from 'lucide-vue-next'
+import { Swords } from 'lucide-vue-next'
 import TopBar from '../components/TopBar.vue'
 import SidebarNav from '../components/SidebarNav.vue'
 import ActivityLog from '../components/ActivityLog.vue'
@@ -74,6 +68,7 @@ import ActiveLanePanel from '../components/ActiveLanePanel.vue'
 import PassiveLanePanel from '../components/PassiveLanePanel.vue'
 import SkillsPanel from '../components/SkillsPanel.vue'
 import InventoryPanel from '../components/InventoryPanel.vue'
+import WorldPanel from '../components/WorldPanel.vue'
 import SaveControls from '../components/SaveControls.vue'
 import { useGameStore } from '../stores/gameStore'
 import { useAuthStore } from '@/platform/stores/authStore'

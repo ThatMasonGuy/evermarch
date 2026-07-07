@@ -84,7 +84,19 @@
         </button>
       </div>
 
-      <label class="passive-select-label" :for="taskSelectId">{{ taskSelectLabel }}</label>
+      <div class="passive-select-row">
+        <label class="passive-select-label" :for="taskSelectId">{{ taskSelectLabel }}</label>
+        <button
+          v-if="canUpgradeTask"
+          type="button"
+          class="passive-task-upgrade"
+          :title="upgradeTaskTitle"
+          @click="selectBestTask"
+        >
+          <ArrowUpRight :size="12" />
+          <span>Use {{ upgradeTaskLabel }}</span>
+        </button>
+      </div>
       <select
         :id="taskSelectId"
         class="passive-select"
@@ -113,7 +125,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { BookOpen, Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer } from 'lucide-vue-next'
+import { ArrowUpRight, BookOpen, Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { getTaskById, ALL_TASKS, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
@@ -162,6 +174,15 @@ const tasksForSelectedSkill = computed(() => {
   if (!selectedSkillId.value) return []
   return selectableTasks.value.filter((t) => t.skillId === selectedSkillId.value)
 })
+const bestUnlockedTask = computed(() => {
+  if (!selectedSkillId.value) return null
+  return bestUnlockedTaskForSkill(selectedSkillId.value)
+})
+const canUpgradeTask = computed(() => {
+  return !!bestUnlockedTask.value && bestUnlockedTask.value.id !== lane.value.taskId
+})
+const upgradeTaskLabel = computed(() => bestUnlockedTask.value ? taskChoiceLabel(bestUnlockedTask.value) : '')
+const upgradeTaskTitle = computed(() => upgradeTaskLabel.value ? `Use best unlocked task: ${upgradeTaskLabel.value}` : '')
 
 const taskSelectId = computed(() => `passive-${props.laneType}-task-select`)
 const taskSelectLabel = computed(() =>
@@ -175,21 +196,28 @@ function onSelectTask(taskId: string) {
   }
 }
 
+function selectBestTask() {
+  if (bestUnlockedTask.value) {
+    store.setLaneTask(props.laneType, bestUnlockedTask.value.id)
+  }
+}
+
 function selectSkill(skillId: SkillId) {
   if (selectedSkillId.value === skillId && lane.value.taskId) return
 
-  const nextTask = firstUnlockedTask(skillId)
+  const nextTask = bestUnlockedTaskForSkill(skillId)
   if (nextTask) {
     store.setLaneTask(props.laneType, nextTask.id)
   }
 }
 
-function firstUnlockedTask(skillId: SkillId): TaskDefinition | null {
-  return tasksForSkill(skillId).find((t) => store.getSkillLevel(t.skillId) >= t.levelRequired) ?? null
+function bestUnlockedTaskForSkill(skillId: SkillId): TaskDefinition | null {
+  const unlockedTasks = tasksForSkill(skillId).filter((t) => store.getSkillLevel(t.skillId) >= t.levelRequired)
+  return unlockedTasks[unlockedTasks.length - 1] ?? null
 }
 
 function hasUnlockedTasks(skillId: SkillId): boolean {
-  return firstUnlockedTask(skillId) !== null
+  return bestUnlockedTaskForSkill(skillId) !== null
 }
 
 function tasksForSkill(skillId: SkillId): TaskDefinition[] {
@@ -435,6 +463,37 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+.passive-select-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.passive-task-upgrade {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.08);
+  color: var(--color-accent-light);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.passive-task-upgrade:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-glow);
 }
 
 .passive-select {

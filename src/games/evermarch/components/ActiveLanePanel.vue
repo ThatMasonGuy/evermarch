@@ -94,7 +94,19 @@
           <span class="active-task-option-level">Lv.{{ store.getSkillLevel(skill.id) }}</span>
         </button>
       </div>
-      <span class="active-task-select-label">{{ taskSelectLabel }}</span>
+      <div class="active-task-select-row">
+        <span class="active-task-select-label">{{ taskSelectLabel }}</span>
+        <button
+          v-if="canUpgradeTask"
+          type="button"
+          class="active-task-upgrade"
+          :title="upgradeTaskTitle"
+          @click="selectBestTask"
+        >
+          <ArrowUpRight :size="12" />
+          <span>Use {{ upgradeTaskLabel }}</span>
+        </button>
+      </div>
       <div class="active-task-options">
         <button
           v-for="t in tasksForSelectedSkill"
@@ -119,7 +131,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { BookOpen, FlameKindling, Fish, Hammer, Pickaxe, Sprout, TreePine } from 'lucide-vue-next'
+import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Pickaxe, Sprout, TreePine } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
@@ -166,6 +178,15 @@ const tasksForSelectedSkill = computed(() => {
   if (!selectedSkillId.value) return []
   return selectableTasks.value.filter((t) => t.skillId === selectedSkillId.value)
 })
+const bestUnlockedTask = computed(() => {
+  if (!selectedSkillId.value) return null
+  return bestUnlockedTaskForSkill(selectedSkillId.value)
+})
+const canUpgradeTask = computed(() => {
+  return !!bestUnlockedTask.value && bestUnlockedTask.value.id !== lane.value.taskId
+})
+const upgradeTaskLabel = computed(() => bestUnlockedTask.value ? taskChoiceLabel(bestUnlockedTask.value) : '')
+const upgradeTaskTitle = computed(() => upgradeTaskLabel.value ? `Use best unlocked task: ${upgradeTaskLabel.value}` : '')
 
 const taskSelectLabel = computed(() =>
   selectedSkillId.value ? taskSelectorLabel(selectedSkillId.value) : 'Task'
@@ -199,21 +220,28 @@ function selectTask(taskId: string) {
   store.setLaneTask('active', taskId)
 }
 
+function selectBestTask() {
+  if (bestUnlockedTask.value) {
+    selectTask(bestUnlockedTask.value.id)
+  }
+}
+
 function selectSkill(skillId: SkillId) {
   if (selectedSkillId.value === skillId && lane.value.taskId) return
 
-  const nextTask = firstUnlockedTask(skillId)
+  const nextTask = bestUnlockedTaskForSkill(skillId)
   if (nextTask) {
     store.setLaneTask('active', nextTask.id)
   }
 }
 
-function firstUnlockedTask(skillId: SkillId): TaskDefinition | null {
-  return tasksForSkill(skillId).find((t) => store.getSkillLevel(t.skillId) >= t.levelRequired) ?? null
+function bestUnlockedTaskForSkill(skillId: SkillId): TaskDefinition | null {
+  const unlockedTasks = tasksForSkill(skillId).filter((t) => store.getSkillLevel(t.skillId) >= t.levelRequired)
+  return unlockedTasks[unlockedTasks.length - 1] ?? null
 }
 
 function hasUnlockedTasks(skillId: SkillId): boolean {
-  return firstUnlockedTask(skillId) !== null
+  return bestUnlockedTaskForSkill(skillId) !== null
 }
 
 function tasksForSkill(skillId: SkillId): TaskDefinition[] {
@@ -513,6 +541,37 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.active-task-select-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.active-task-upgrade {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--color-accent-light);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.active-task-upgrade:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-glow);
 }
 
 .active-task-options {

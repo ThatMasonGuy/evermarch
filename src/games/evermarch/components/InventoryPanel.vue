@@ -46,7 +46,7 @@
 import { ref, computed } from 'vue'
 import { Coins, Package } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
-import { RESOURCES } from '../data/resources'
+import { getResourceDefinition } from '../data/resources'
 
 const store = useGameStore()
 const activeCategory = ref('all')
@@ -57,6 +57,13 @@ const categories = [
   { id: 'log', label: 'Logs' },
   { id: 'fish', label: 'Fish' },
   { id: 'crop', label: 'Crops' },
+  { id: 'food', label: 'Food' },
+  { id: 'ember', label: 'Embers' },
+  { id: 'metalwork', label: 'Metalwork' },
+  { id: 'fletched', label: 'Fletched' },
+  { id: 'crafted', label: 'Crafted' },
+  { id: 'rune', label: 'Runes' },
+  { id: 'misc', label: 'Misc' },
 ]
 
 const filteredItems = computed(() => {
@@ -64,8 +71,7 @@ const filteredItems = computed(() => {
 
   for (const [id, count] of Object.entries(store.inventory)) {
     if (count <= 0) continue
-    const def = RESOURCES[id as keyof typeof RESOURCES]
-    if (!def) continue
+    const def = getResourceDefinition(id)
     if (activeCategory.value !== 'all' && def.category !== activeCategory.value) continue
     items.push({ id, name: def.name, count, category: def.category })
   }

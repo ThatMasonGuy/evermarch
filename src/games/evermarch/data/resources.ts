@@ -1,5 +1,5 @@
 /**
- * Resource definitions — items the player collects.
+ * Resource definitions: items the player collects.
  */
 
 import type { ResourceId } from './tasks'
@@ -8,7 +8,7 @@ export interface ResourceDefinition {
   id: ResourceId
   name: string
   icon: string
-  category: 'ore' | 'log' | 'fish' | 'crop' | 'currency'
+  category: string
   /** Gold value if sold */
   sellValue: number
 }
@@ -31,6 +31,63 @@ export const RESOURCES: Record<ResourceId, ResourceDefinition> = {
   gold: { id: 'gold', name: 'Gold', icon: 'Coins', category: 'currency', sellValue: 0 },
 }
 
+export function getResourceDefinition(id: ResourceId): ResourceDefinition {
+  return RESOURCES[id] ?? {
+    id,
+    name: titleFromId(id),
+    icon: iconForResource(id),
+    category: categoryForResource(id),
+    sellValue: sellValueForResource(id),
+  }
+}
+
 export function getResourceName(id: ResourceId): string {
-  return RESOURCES[id]?.name ?? id
+  return getResourceDefinition(id).name
+}
+
+function titleFromId(id: string): string {
+  return id
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function categoryForResource(id: string): string {
+  if (id.endsWith('_ore') || id === 'coal' || id.includes('stone') || id.includes('crystal') || id.includes('core')) return 'ore'
+  if (id.endsWith('_log') || id.includes('timber')) return 'log'
+  if (id.startsWith('raw_')) return 'fish'
+  if (id.startsWith('cooked_')) return 'food'
+  if (id.endsWith('_ash') || id.endsWith('_ember')) return 'ember'
+  if (id.includes('fittings') || id.includes('frame') || id.includes('plate') || id.includes('mechanism') || id.includes('crucible')) return 'metalwork'
+  if (id.includes('arrow') || id.includes('bow') || id.includes('bolt') || id.includes('crossbow')) return 'fletched'
+  if (id.includes('charm') || id.includes('locket') || id.includes('ring') || id.includes('amulet') || id.includes('necklace') || id.includes('relic') || id.includes('idol')) return 'crafted'
+  if (id.endsWith('_rune')) return 'rune'
+  if (['barley', 'sunleaf', 'mooncap', 'silverthorn', 'starflower', 'everroot', 'worldseed'].includes(id)) return 'crop'
+  return 'misc'
+}
+
+function iconForResource(id: string): string {
+  const category = categoryForResource(id)
+  switch (category) {
+    case 'ore': return 'Gem'
+    case 'log': return 'TreePine'
+    case 'fish': return 'Fish'
+    case 'food': return 'FlameKindling'
+    case 'crop': return 'Sprout'
+    case 'ember': return 'FlameKindling'
+    case 'metalwork': return 'Hammer'
+    case 'fletched': return 'Hammer'
+    case 'crafted': return 'Gem'
+    case 'rune': return 'BookOpen'
+    default: return 'Package'
+  }
+}
+
+function sellValueForResource(id: string): number {
+  const category = categoryForResource(id)
+  if (category === 'rune') return 6
+  if (category === 'crafted' || category === 'metalwork') return 10
+  if (category === 'fletched' || category === 'food') return 7
+  if (category === 'ore' || category === 'log' || category === 'fish' || category === 'crop') return 4
+  return 1
 }

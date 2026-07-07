@@ -17,9 +17,10 @@
           <TreePine v-else-if="task.skillId === 'woodcutting'" :size="20" />
           <Fish v-else-if="task.skillId === 'fishing'" :size="20" />
           <Sprout v-else-if="task.skillId === 'farming'" :size="20" />
-          <FlameKindling v-else-if="task.skillId === 'cooking'" :size="20" />
-          <Hammer v-else-if="task.skillId === 'smithing'" :size="20" />
-          <Swords v-else :size="20" />
+          <FlameKindling v-else-if="task.skillId === 'firemaking' || task.skillId === 'cooking'" :size="20" />
+          <Hammer v-else-if="task.skillId === 'smithing' || task.skillId === 'fletching' || task.skillId === 'crafting'" :size="20" />
+          <BookOpen v-else-if="task.skillId === 'runecrafting'" :size="20" />
+          <Hammer v-else :size="20" />
           <span class="passive-icon-level">Lv{{ skillLevel }}</span>
         </div>
         <div class="passive-details">
@@ -66,7 +67,8 @@
           <Sprout v-else-if="skill.icon === 'Sprout'" :size="14" />
           <FlameKindling v-else-if="skill.icon === 'FlameKindling'" :size="14" />
           <Hammer v-else-if="skill.icon === 'Hammer'" :size="14" />
-          <Swords v-else :size="14" />
+          <BookOpen v-else-if="skill.icon === 'BookOpen'" :size="14" />
+          <Hammer v-else :size="14" />
           <span>{{ skill.name }}</span>
           <small>Lv.{{ store.getSkillLevel(skill.id) }}</small>
         </button>
@@ -101,7 +103,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer, Swords } from 'lucide-vue-next'
+import { BookOpen, Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { getTaskById, ALL_TASKS, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
@@ -187,32 +189,19 @@ function taskSelectorLabel(skillId: SkillId): string {
     case 'mining': return 'Ore'
     case 'woodcutting': return 'Tree'
     case 'fishing': return 'Fishing spot'
+    case 'firemaking': return 'Fire'
     case 'farming': return 'Crop'
     case 'cooking': return 'Recipe'
     case 'smithing': return 'Project'
-    case 'combat': return 'Target'
+    case 'fletching': return 'Fletching project'
+    case 'crafting': return 'Craft'
+    case 'runecrafting': return 'Rune'
     default: return 'Task'
   }
 }
 
 function taskChoiceLabel(taskDef: TaskDefinition): string {
-  switch (taskDef.id) {
-    case 'mine_copper': return 'Copper'
-    case 'mine_tin': return 'Tin'
-    case 'mine_iron': return 'Iron'
-    case 'mine_coal': return 'Coal'
-    case 'chop_oak': return 'Oak'
-    case 'chop_willow': return 'Willow'
-    case 'chop_maple': return 'Maple'
-    case 'fish_shrimp': return 'Shallow Coast'
-    case 'fish_trout': return 'Cold Stream'
-    case 'fish_salmon': return 'River Bend'
-    case 'grow_potato': return 'Potato Patch'
-    case 'grow_onion': return 'Onion Plot'
-    case 'grow_tomato': return 'Tomato Bed'
-    case 'grow_wheat': return 'Wheat Field'
-    default: return taskDef.name
-  }
+  return taskDef.name.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
 }
 </script>
 

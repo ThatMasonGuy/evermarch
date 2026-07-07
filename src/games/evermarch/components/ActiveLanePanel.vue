@@ -54,22 +54,42 @@
       <Pickaxe v-if="task.skillId === 'mining'" :size="20" />
       <TreePine v-else-if="task.skillId === 'woodcutting'" :size="20" />
       <Fish v-else-if="task.skillId === 'fishing'" :size="20" />
-      <Swords v-else :size="20" />
+      <FlameKindling v-else-if="task.skillId === 'firemaking' || task.skillId === 'cooking'" :size="20" />
+      <Hammer v-else-if="task.skillId === 'smithing' || task.skillId === 'fletching' || task.skillId === 'crafting'" :size="20" />
+      <BookOpen v-else-if="task.skillId === 'runecrafting'" :size="20" />
+      <Sprout v-else :size="20" />
       <span>{{ actionLabel }}</span>
     </button>
 
     <!-- Task Selector -->
-    <div class="active-task-select" v-if="availableTasks.length > 1">
-      <span class="active-task-select-label">Change task:</span>
+    <div class="active-task-select" v-if="selectableSkills.length > 0">
+      <span class="active-task-select-label">Active task type</span>
+      <div class="active-skill-options">
+        <button
+          v-for="skill in selectableSkills"
+          :key="skill.id"
+          type="button"
+          class="active-skill-option"
+          :class="{ 'active-skill-option-current': skill.id === selectedSkillId }"
+          :disabled="!hasUnlockedTasks(skill.id)"
+          :title="skillTabTitle(skill.id)"
+          @click="selectSkill(skill.id)"
+        >
+          {{ skill.name }}
+          <span class="active-task-option-level">Lv.{{ store.getSkillLevel(skill.id) }}</span>
+        </button>
+      </div>
+      <span class="active-task-select-label">{{ taskSelectLabel }}</span>
       <div class="active-task-options">
         <button
-          v-for="t in availableTasks"
+          v-for="t in tasksForSelectedSkill"
           :key="t.id"
           class="active-task-option"
           :class="{ 'active-task-option-current': t.id === lane.taskId }"
+          :disabled="store.getSkillLevel(t.skillId) < t.levelRequired"
           @click="selectTask(t.id)"
         >
-          {{ t.name }}
+          {{ taskChoiceLabel(t) }}
           <span class="active-task-option-level">Lv.{{ t.levelRequired }}</span>
         </button>
       </div>
@@ -84,10 +104,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Pickaxe, TreePine, Fish, Swords } from 'lucide-vue-next'
+import { BookOpen, FlameKindling, Fish, Hammer, Pickaxe, Sprout, TreePine } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
-import { getTaskById, getAvailableTasks } from '../data/tasks'
-import { SKILLS } from '../data/skills'
+import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
+import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
 import { performActiveAction } from '../engine/gameEngine'
 
 const store = useGameStore()
@@ -100,13 +120,27 @@ const skillLevel = computed(() => task.value ? store.getSkillLevel(task.value.sk
 const skillProgress = computed(() => task.value ? store.getSkillProgress(task.value.skillId) : 0)
 const xpToNext = computed(() => task.value ? store.getSkillXpToNext(task.value.skillId) : 0)
 
-const availableTasks = computed(() => {
-  if (!task.value) return []
-  const level = store.getSkillLevel(task.value.skillId)
-  // Show all tasks for the same skill that can be active
-  return getAvailableTasks(task.value.skillId, level)
-    .filter((t) => t.allowedLanes.includes('active'))
+const selectableTasks = computed(() => {
+  return ALL_TASKS.filter((t) => t.allowedLanes.includes('active'))
 })
+
+const selectableSkills = computed(() => {
+  const skillIds = new Set(selectableTasks.value.map((t) => t.skillId))
+  return SKILL_LIST.filter((skill) => skillIds.has(skill.id))
+})
+
+const selectedSkillId = computed<SkillId | null>(() => {
+  return task.value?.skillId ?? selectableSkills.value[0]?.id ?? null
+})
+
+const tasksForSelectedSkill = computed(() => {
+  if (!selectedSkillId.value) return []
+  return selectableTasks.value.filter((t) => t.skillId === selectedSkillId.value)
+})
+
+const taskSelectLabel = computed(() =>
+  selectedSkillId.value ? taskSelectorLabel(selectedSkillId.value) : 'Task'
+)
 
 const actionLabel = computed(() => {
   if (!task.value) return 'Action'
@@ -114,7 +148,12 @@ const actionLabel = computed(() => {
     case 'mining': return 'Mine'
     case 'woodcutting': return 'Chop'
     case 'fishing': return 'Fish'
-    case 'combat': return 'Attack'
+    case 'firemaking': return 'Kindle'
+    case 'cooking': return 'Cook'
+    case 'smithing': return 'Forge'
+    case 'fletching': return 'Shape'
+    case 'crafting': return 'Craft'
+    case 'runecrafting': return 'Bind'
     default: return 'Action'
   }
 })
@@ -129,6 +168,52 @@ function onAction() {
 
 function selectTask(taskId: string) {
   store.setLaneTask('active', taskId)
+}
+
+function selectSkill(skillId: SkillId) {
+  if (selectedSkillId.value === skillId && lane.value.taskId) return
+
+  const nextTask = firstUnlockedTask(skillId)
+  if (nextTask) {
+    store.setLaneTask('active', nextTask.id)
+  }
+}
+
+function firstUnlockedTask(skillId: SkillId): TaskDefinition | null {
+  return tasksForSkill(skillId).find((t) => store.getSkillLevel(t.skillId) >= t.levelRequired) ?? null
+}
+
+function hasUnlockedTasks(skillId: SkillId): boolean {
+  return firstUnlockedTask(skillId) !== null
+}
+
+function tasksForSkill(skillId: SkillId): TaskDefinition[] {
+  return selectableTasks.value.filter((t) => t.skillId === skillId)
+}
+
+function skillTabTitle(skillId: SkillId): string {
+  const firstLockedTask = tasksForSkill(skillId)[0]
+  if (hasUnlockedTasks(skillId) || !firstLockedTask) return `Choose ${SKILLS[skillId].name}`
+  return `${SKILLS[skillId].name} unlocks at level ${firstLockedTask.levelRequired}`
+}
+
+function taskSelectorLabel(skillId: SkillId): string {
+  switch (skillId) {
+    case 'mining': return 'Ore'
+    case 'woodcutting': return 'Tree'
+    case 'fishing': return 'Fishing spot'
+    case 'firemaking': return 'Fire'
+    case 'cooking': return 'Recipe'
+    case 'smithing': return 'Project'
+    case 'fletching': return 'Fletching project'
+    case 'crafting': return 'Craft'
+    case 'runecrafting': return 'Rune'
+    default: return 'Task'
+  }
+}
+
+function taskChoiceLabel(taskDef: TaskDefinition): string {
+  return taskDef.name.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
 }
 </script>
 
@@ -373,6 +458,41 @@ function selectTask(taskId: string) {
   justify-content: center;
 }
 
+.active-skill-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.active-skill-option {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.active-skill-option:hover:not(:disabled) {
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+}
+.active-skill-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.active-skill-option-current {
+  border-color: var(--color-accent);
+  background: var(--color-accent-glow);
+  color: var(--color-accent-light);
+}
+
 .active-task-option {
   padding: 6px 14px;
   border-radius: var(--radius-sm);
@@ -390,6 +510,10 @@ function selectTask(taskId: string) {
 .active-task-option:hover {
   border-color: var(--color-border-hover);
   color: var(--color-text-primary);
+}
+.active-task-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .active-task-option-current {
   border-color: var(--color-accent);

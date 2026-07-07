@@ -3,7 +3,7 @@
     <!-- Nav -->
     <nav class="save-nav">
       <div class="save-nav-inner">
-        <a href="/evermarch" class="save-nav-back">
+        <a :href="portalHref" class="save-nav-back">
           <ArrowLeft :size="16" />
           <span>Back to Evermarch</span>
         </a>
@@ -65,7 +65,7 @@
 
         <!-- Cloud Restore Card (if logged in) -->
         <div
-          v-if="authStore.user"
+          v-if="authStore.user && isFirebaseEnabled"
           class="save-card save-card-cloud animate-fade-in-up"
         >
           <div class="save-card-header">
@@ -166,6 +166,7 @@ import {
   Plus, Play
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/platform/stores/authStore'
+import { isFirebaseEnabled } from '@/platform/services/firebase'
 import { useGameStore } from '../stores/gameStore'
 import { loadLocal, saveLocal, deleteLocalSave, pullFromCloud, hasCloudSave } from '../engine/saveSystem'
 import { levelForXp } from '../data/xp'
@@ -188,6 +189,7 @@ const cloudAvailable = ref(false)
 
 const showCreateModal = ref(false)
 const newSaveName = ref('')
+const portalHref = import.meta.env.DEV ? '/' : '/evermarch'
 
 onMounted(async () => {
   // Check local save

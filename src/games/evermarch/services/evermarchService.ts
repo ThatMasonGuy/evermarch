@@ -1,4 +1,4 @@
-import { firestore, functions } from '@/platform/services/firebase'
+import { firestore, functions, isLocalPlatformMode } from '@/platform/services/firebase'
 import { doc, getDoc, collection, getDocs, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 
@@ -21,9 +21,30 @@ export interface AlphaStatus {
   approvedAt?: Date
 }
 
+function requireFirestore() {
+  if (!firestore) {
+    throw new Error('Firebase Firestore is not configured for this environment.')
+  }
+
+  return firestore
+}
+
+function requireFunctions() {
+  if (!functions) {
+    throw new Error('Firebase Functions are not configured for this environment.')
+  }
+
+  return functions
+}
+
 export const evermarchService = {
   async getAlphaStatus(uid: string): Promise<AlphaStatus> {
-    const snap = await getDoc(doc(firestore, 'users', uid))
+    if (isLocalPlatformMode) {
+      return { alphaStatus: 'approved', approvedAt: new Date() }
+    }
+
+    const db = requireFirestore()
+    const snap = await getDoc(doc(db, 'users', uid))
     const data = snap.data()
     if (!data?.evermarch) return { alphaStatus: 'none' }
     return {
@@ -34,13 +55,22 @@ export const evermarchService = {
   },
 
   async requestAlphaAccess(): Promise<{ status: string }> {
-    const fn = httpsCallable<void, { status: string }>(functions, 'requestEvermarchAlpha')
+    if (isLocalPlatformMode) {
+      return { status: 'approved' }
+    }
+
+    const fn = httpsCallable<void, { status: string }>(requireFunctions(), 'requestEvermarchAlpha')
     const result = await fn()
     return result.data
   },
 
   async getSaves(uid: string): Promise<EvermarchSave[]> {
-    const colRef = collection(firestore, 'users', uid, 'evermarch_saves')
+    if (isLocalPlatformMode) {
+      return []
+    }
+
+    const db = requireFirestore()
+    const colRef = collection(db, 'users', uid, 'evermarch_saves')
     const snap = await getDocs(colRef)
     return snap.docs.map((d) => {
       const data = d.data()
@@ -60,7 +90,24 @@ export const evermarchService = {
   },
 
   async createSave(uid: string, name: string, mode: string = 'standard'): Promise<EvermarchSave> {
-    const colRef = collection(firestore, 'users', uid, 'evermarch_saves')
+    if (isLocalPlatformMode) {
+      const now = new Date()
+      return {
+        id: `local-${now.getTime().toString(36)}`,
+        name,
+        createdAt: now,
+        lastPlayed: now,
+        playtime: 0,
+        level: 1,
+        region: 'The Hollow',
+        mode,
+        storage: 'local',
+        syncStatus: 'local-only',
+      }
+    }
+
+    const db = requireFirestore()
+    const colRef = collection(db, 'users', uid, 'evermarch_saves')
     const newDoc = doc(colRef)
     const save: Record<string, unknown> = {
       name,
@@ -89,6 +136,9 @@ export const evermarchService = {
   },
 
   async deleteSave(uid: string, saveId: string): Promise<void> {
-    await deleteDoc(doc(firestore, 'users', uid, 'evermarch_saves', saveId))
+    if (isLocalPlatformMode) return
+
+    const db = requireFirestore()
+    await deleteDoc(doc(db, 'users', uid, 'evermarch_saves', saveId))
   },
 }

@@ -57,6 +57,11 @@ export function deleteLocalSave(): void {
 export async function pushToCloud(uid: string): Promise<boolean> {
   try {
     const store = useGameStore()
+    if (!firestore) {
+      store.addLog('Cloud backup is unavailable in this environment.', 'system')
+      return false
+    }
+
     const data = store.serialize()
     data.lastSavedAt = Date.now()
 
@@ -85,6 +90,10 @@ export async function pushToCloud(uid: string): Promise<boolean> {
  */
 export async function pullFromCloud(uid: string): Promise<GameSaveData | null> {
   try {
+    if (!firestore) {
+      return null
+    }
+
     const docRef = doc(firestore, 'users', uid, 'evermarch_saves', 'primary')
     const snap = await getDoc(docRef)
 
@@ -106,6 +115,10 @@ export async function pullFromCloud(uid: string): Promise<GameSaveData | null> {
  */
 export async function hasCloudSave(uid: string): Promise<boolean> {
   try {
+    if (!firestore) {
+      return false
+    }
+
     const docRef = doc(firestore, 'users', uid, 'evermarch_saves', 'primary')
     const snap = await getDoc(docRef)
     return snap.exists()

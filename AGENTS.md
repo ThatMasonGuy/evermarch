@@ -32,5 +32,6 @@ Evermarch is the authenticated idle RPG app mounted at `/evermarch/app/` on `pla
 - Keep shared auth/Firebase integration under `src/platform`.
 - Validate meaningful changes with `npm run build`.
 - If dependencies change, run `npm install` and keep `package-lock.json` in sync.
+- After any major change or new feature, commit a verified checkpoint promptly. Multiple commits during one working turn are acceptable when they create useful rollback points.
 - Preserve user work already in the tree.
 - Do not credit external code-generation tools in commits, docs, comments, or generated project content.

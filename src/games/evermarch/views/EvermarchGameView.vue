@@ -77,6 +77,7 @@ import InventoryPanel from '../components/InventoryPanel.vue'
 import SaveControls from '../components/SaveControls.vue'
 import { useGameStore } from '../stores/gameStore'
 import { useAuthStore } from '@/platform/stores/authStore'
+import { isFirebaseEnabled } from '@/platform/services/firebase'
 import { startEngine, stopEngine, processOfflineProgress } from '../engine/gameEngine'
 import { loadLocal, saveLocal, pushToCloud } from '../engine/saveSystem'
 
@@ -116,6 +117,10 @@ function handleBeforeUnload() {
 async function handleBackup() {
   if (!authStore.user) {
     store.addLog('Sign in to back up to the cloud.', 'system')
+    return
+  }
+  if (!isFirebaseEnabled) {
+    store.addLog('Cloud backup is unavailable in this environment.', 'system')
     return
   }
   saveLocal()

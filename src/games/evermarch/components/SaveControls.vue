@@ -51,7 +51,7 @@
             <div class="save-btn-row">
               <button
                 class="save-btn"
-                :disabled="!isLoggedIn || cloudBusy"
+                :disabled="!canUseCloud || cloudBusy"
                 @click="handlePushToCloud"
               >
                 <CloudUpload :size="14" />
@@ -59,14 +59,15 @@
               </button>
               <button
                 class="save-btn save-btn-ghost"
-                :disabled="!isLoggedIn || cloudBusy"
+                :disabled="!canUseCloud || cloudBusy"
                 @click="handlePullFromCloud"
               >
                 <CloudDownload :size="14" />
                 <span>{{ cloudBusy ? 'Loading...' : 'Restore from Cloud' }}</span>
               </button>
             </div>
-            <p v-if="!isLoggedIn" class="save-warning">Sign in to use cloud saves.</p>
+            <p v-if="isLocalPlatformMode" class="save-warning">Local dev mode uses device-only saves.</p>
+            <p v-else-if="!isLoggedIn" class="save-warning">Sign in to use cloud saves.</p>
             <p v-if="cloudMessage" class="save-message" :class="cloudMessageType">{{ cloudMessage }}</p>
           </div>
 
@@ -97,6 +98,7 @@ import {
 } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { useAuthStore } from '@/platform/stores/authStore'
+import { isFirebaseEnabled, isLocalPlatformMode } from '@/platform/services/firebase'
 import { saveLocal, pushToCloud, pullFromCloud, deleteLocalSave } from '../engine/saveSystem'
 
 defineProps<{
@@ -111,6 +113,7 @@ const store = useGameStore()
 const authStore = useAuthStore()
 
 const isLoggedIn = computed(() => !!authStore.user)
+const canUseCloud = computed(() => isLoggedIn.value && isFirebaseEnabled)
 const cloudBusy = ref(false)
 const cloudMessage = ref('')
 const cloudMessageType = ref<'success' | 'error'>('success')

@@ -15,7 +15,13 @@ npm install
 npm run dev
 ```
 
-Firebase config is provided through `VITE_FIREBASE_*` environment variables. Local values can live in `.env`; production values are generated in the play-site deployment workflow and passed into this app build.
+By default, `npm run dev` can run without Firebase values. When required `VITE_FIREBASE_*` variables are blank, Evermarch uses a local platform shim with an approved developer user, localStorage saves, and cloud backup disabled. This keeps the game playable while the public portal, auth UI, and hosted Firebase config remain owned by `ThatMasonGuy/play-tempest-studios`.
+
+Firebase config is provided through `VITE_FIREBASE_*` environment variables. Local values can live in `.env`; production values are generated in the play-site deployment workflow and passed into this app build. If you have Firebase values filled but still want the local shim, set:
+
+```bash
+VITE_EVERMARCH_FORCE_LOCAL_PLATFORM=true
+```
 
 ## Build
 

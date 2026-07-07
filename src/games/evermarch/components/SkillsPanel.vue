@@ -27,13 +27,22 @@
           <BookOpen v-else :size="18" />
         </div>
         <div class="skill-info">
-          <div class="skill-name">{{ skill.def.name }}</div>
-          <div class="skill-level">Lv. {{ skill.level }}</div>
+          <div class="skill-title-row">
+            <div class="skill-name">{{ skill.def.name }}</div>
+            <div class="skill-level">Lv. {{ skill.level }}</div>
+          </div>
           <div class="skill-bar">
             <div
               class="skill-bar-fill"
               :style="{ width: (skill.progress * 100) + '%', background: skill.def.color }"
             ></div>
+          </div>
+          <div class="skill-progression">
+            <span class="skill-current">{{ skill.currentTaskLabel }}</span>
+            <span class="skill-next">{{ skill.nextTaskLabel }}</span>
+          </div>
+          <div class="skill-unlocks">
+            {{ skill.unlockedTaskCount }} / {{ skill.totalTaskCount }} tasks unlocked
           </div>
         </div>
         <div class="skill-lane-badge" v-if="getLaneBadge(skill.id)">
@@ -49,17 +58,29 @@ import { computed } from 'vue'
 import { Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer, Swords, BookOpen } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { SKILL_LIST, type SkillId } from '../data/skills'
-import { getTaskById } from '../data/tasks'
+import { getTaskById, getTasksForSkill, type TaskDefinition } from '../data/tasks'
 
 const store = useGameStore()
 
 const skillData = computed(() =>
-  SKILL_LIST.map((def) => ({
-    id: def.id,
-    def,
-    level: store.getSkillLevel(def.id),
-    progress: store.getSkillProgress(def.id),
-  }))
+  SKILL_LIST.map((def) => {
+    const level = store.getSkillLevel(def.id)
+    const tasks = getTasksForSkill(def.id)
+    const unlockedTasks = tasks.filter((task) => level >= task.levelRequired)
+    const currentTask = unlockedTasks[unlockedTasks.length - 1] ?? null
+    const nextTask = tasks.find((task) => level < task.levelRequired) ?? null
+
+    return {
+      id: def.id,
+      def,
+      level,
+      progress: store.getSkillProgress(def.id),
+      currentTaskLabel: currentTask ? `Current: ${taskChoiceLabel(currentTask)}` : 'No task unlocked',
+      nextTaskLabel: nextTask ? `Next: ${taskChoiceLabel(nextTask)} at Lv. ${nextTask.levelRequired}` : 'All tasks unlocked',
+      unlockedTaskCount: unlockedTasks.length,
+      totalTaskCount: tasks.length,
+    }
+  })
 )
 
 function getActiveSkillId(): SkillId | null {
@@ -87,8 +108,12 @@ function isInBackgroundLane(id: SkillId): boolean { return getBackgroundSkillId(
 function getLaneBadge(id: SkillId): string | null {
   if (isInActiveLane(id)) return 'Active'
   if (isInIdleLane(id)) return 'Routine'
-  if (isInBackgroundLane(id)) return 'BG'
+  if (isInBackgroundLane(id)) return 'Background'
   return null
+}
+
+function taskChoiceLabel(taskDef: TaskDefinition): string {
+  return taskDef.name.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
 }
 </script>
 
@@ -124,9 +149,9 @@ function getLaneBadge(id: SkillId): string | null {
 
 .skill-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-card);
@@ -164,24 +189,36 @@ function getLaneBadge(id: SkillId): string | null {
 .skill-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.skill-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 52px;
 }
 
 .skill-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .skill-level {
   font-size: 11px;
   color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .skill-bar {
   height: 3px;
   background: var(--color-bg-elevated);
   border-radius: 2px;
-  margin-top: 4px;
   overflow: hidden;
 }
 
@@ -189,6 +226,32 @@ function getLaneBadge(id: SkillId): string | null {
   height: 100%;
   border-radius: 2px;
   transition: width 0.3s ease;
+}
+
+.skill-progression {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.skill-current {
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.skill-next {
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.skill-unlocks {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--color-accent-light);
 }
 
 .skill-lane-badge {

@@ -93,6 +93,11 @@ const store = useGameStore()
   font-weight: 600;
 }
 
+.em-log-unlock .em-log-msg {
+  color: #fde68a;
+  font-weight: 600;
+}
+
 .em-log-offline .em-log-msg {
   color: #a78bfa;
 }

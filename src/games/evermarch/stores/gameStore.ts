@@ -8,7 +8,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { SkillId, LaneType } from '../data/skills'
 import { SKILL_LIST } from '../data/skills'
-import { getDefaultTaskIdForLane, getTaskById, normalizeTaskId } from '../data/tasks'
+import { getDefaultTaskIdForLane, getTaskById, getTasksForSkill, normalizeTaskId } from '../data/tasks'
 import { getResourceDefinition } from '../data/resources'
 import { levelForXp, xpProgressFraction, xpToNextLevel } from '../data/xp'
 
@@ -30,7 +30,7 @@ export interface LogEntry {
   id: number
   time: string
   message: string
-  type: 'gain' | 'levelup' | 'system' | 'offline'
+  type: 'gain' | 'levelup' | 'unlock' | 'system' | 'offline'
   /** For stacking repeated identical messages */
   count: number
 }
@@ -123,11 +123,24 @@ export const useGameStore = defineStore('evermarch-game', () => {
 
     if (newLevel > prevLevel) {
       const skillDef = SKILL_LIST.find((s) => s.id === skillId)
+      const skillName = skillDef?.name ?? skillId
       addLog(
-        `${skillDef?.name ?? skillId} level increased to ${newLevel}!`,
+        `${skillName} level increased to ${newLevel}!`,
         'levelup'
       )
+      logTaskUnlocks(skillId, skillName, prevLevel, newLevel)
     }
+  }
+
+  function logTaskUnlocks(skillId: SkillId, skillName: string, previousLevel: number, newLevel: number) {
+    const unlockedTasks = getTasksForSkill(skillId)
+      .filter((task) => task.levelRequired > previousLevel && task.levelRequired <= newLevel)
+      .sort((a, b) => a.levelRequired - b.levelRequired || a.name.localeCompare(b.name))
+
+    if (unlockedTasks.length === 0) return
+
+    const taskNames = unlockedTasks.map((task) => taskChoiceLabel(task.name))
+    addLog(`Unlocked ${skillName}: ${formatList(taskNames)}`, 'unlock')
   }
 
   function addItem(resourceId: string, amount: number) {
@@ -181,6 +194,15 @@ export const useGameStore = defineStore('evermarch-game', () => {
 
     const task = getTaskById(lane.taskId)
     addLog(`Started ${task?.name ?? lane.taskId} (${laneType})`, 'system')
+  }
+
+  function taskChoiceLabel(taskName: string): string {
+    return taskName.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
+  }
+
+  function formatList(values: string[]): string {
+    if (values.length <= 2) return values.join(', ')
+    return `${values.slice(0, 2).join(', ')}, and ${values.length - 2} more`
   }
 
   // ── Activity Log ──

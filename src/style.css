@@ -1,0 +1,325 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════
+   PLATFORM ROOT DESIGN SYSTEM
+   Controls the overall Play Tempest Studios platform aesthetic.
+   Game pages inherit from this and override via CSS custom properties.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Platform Colours ── */
+  --color-bg-deep: #0a0a12;
+  --color-bg-surface: #0f0f1a;
+  --color-bg-card: #141422;
+  --color-bg-card-hover: #1a1a2e;
+  --color-bg-elevated: #1e1e32;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #4b5563;
+  --color-text-faint: #2d3348;
+
+  /* ── Platform Accent (Violet) ── */
+  --color-accent: #8b5cf6;
+  --color-accent-light: #a78bfa;
+  --color-accent-dim: #6d28d9;
+  --color-accent-glow: rgba(139, 92, 246, 0.15);
+  --color-accent-glow-strong: rgba(139, 92, 246, 0.35);
+
+  /* ── Typography ── */
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Orbitron', 'Inter', sans-serif;
+
+  /* ── Spacing & Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* ── Transitions ── */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+  --transition-glacial: 700ms ease;
+
+  /* ── Base Styles ── */
+  font-family: var(--font-body);
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-deep);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   EVERMARCH DESIGN LANGUAGE
+   Mystical, deep, ancient — emerald greens and gold.
+   Applied when [data-theme="evermarch"] is on a container.
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="evermarch"] {
+  --color-bg-deep: #060d0a;
+  --color-bg-surface: #0a1610;
+  --color-bg-card: #0e1f16;
+  --color-bg-card-hover: #132a1e;
+  --color-bg-elevated: #183524;
+  --color-border: rgba(52, 211, 153, 0.08);
+  --color-border-hover: rgba(52, 211, 153, 0.18);
+  --color-accent: #34d399;
+  --color-accent-light: #6ee7b7;
+  --color-accent-dim: #059669;
+  --color-accent-glow: rgba(52, 211, 153, 0.12);
+  --color-accent-glow-strong: rgba(52, 211, 153, 0.3);
+  --font-display: 'Cinzel', 'Georgia', serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CLUCKBACK DESIGN LANGUAGE
+   Arcade poultry chaos — gold, amber, and warm shadow.
+   Applied when [data-theme="cluckback"] is on a container.
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="cluckback"] {
+  --color-bg-deep: #0f0a05;
+  --color-bg-surface: #171005;
+  --color-bg-card: #211708;
+  --color-bg-card-hover: #2d200d;
+  --color-bg-elevated: #3a2a12;
+  --color-border: rgba(245, 158, 11, 0.1);
+  --color-border-hover: rgba(245, 158, 11, 0.22);
+  --color-accent: #f59e0b;
+  --color-accent-light: #fbbf24;
+  --color-accent-dim: #b45309;
+  --color-accent-glow: rgba(245, 158, 11, 0.14);
+  --color-accent-glow-strong: rgba(245, 158, 11, 0.34);
+  --font-display: 'Orbitron', 'Inter', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DELVE DUNGEON DESIGN LANGUAGE
+   Dark, gritty, dungeon-lit — amber and fire tones.
+   Applied when [data-theme="delve"] is on a container.
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="delve"] {
+  --color-bg-deep: #0d0907;
+  --color-bg-surface: #161009;
+  --color-bg-card: #1f1710;
+  --color-bg-card-hover: #2a1f16;
+  --color-bg-elevated: #352819;
+  --color-border: rgba(251, 191, 36, 0.08);
+  --color-border-hover: rgba(251, 191, 36, 0.18);
+  --color-accent: #fbbf24;
+  --color-accent-light: #fcd34d;
+  --color-accent-dim: #d97706;
+  --color-accent-glow: rgba(251, 191, 36, 0.12);
+  --color-accent-glow-strong: rgba(251, 191, 36, 0.3);
+  --font-display: 'Pirata One', 'Georgia', serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   AFTERFORGE DESIGN LANGUAGE
+   Post-apocalyptic survival — slate, rust, and muted red.
+   Applied when [data-theme="afterforge"] is on a container.
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="afterforge"] {
+  --color-bg-deep: #0c0a09;
+  --color-bg-surface: #150f0d;
+  --color-bg-card: #1c1412;
+  --color-bg-card-hover: #261c18;
+  --color-bg-elevated: #30231d;
+  --color-border: rgba(239, 68, 68, 0.08);
+  --color-border-hover: rgba(239, 68, 68, 0.18);
+  --color-accent: #ef4444;
+  --color-accent-light: #f87171;
+  --color-accent-dim: #b91c1c;
+  --color-accent-glow: rgba(239, 68, 68, 0.12);
+  --color-accent-glow-strong: rgba(239, 68, 68, 0.3);
+  --font-display: 'Orbitron', 'Inter', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BOOMBLOSSOM LAB DESIGN LANGUAGE
+   Whimsical alchemy — warm purple and potion pink.
+   Applied when [data-theme="boomblossom"] is on a container.
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="boomblossom"] {
+  --color-bg-deep: #0c080e;
+  --color-bg-surface: #140e18;
+  --color-bg-card: #1c1422;
+  --color-bg-card-hover: #261c2e;
+  --color-bg-elevated: #30243a;
+  --color-border: rgba(236, 72, 153, 0.08);
+  --color-border-hover: rgba(236, 72, 153, 0.18);
+  --color-accent: #ec4899;
+  --color-accent-light: #f472b6;
+  --color-accent-dim: #be185d;
+  --color-accent-glow: rgba(236, 72, 153, 0.12);
+  --color-accent-glow-strong: rgba(236, 72, 153, 0.3);
+  --font-display: 'MedievalSharp', 'Georgia', serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MIGHTYKNIGHTS DESIGN LANGUAGE
+   Bold strategy — royal blue and steel.
+   Applied when [data-theme="mightyknights"] is on a container.
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="mightyknights"] {
+  --color-bg-deep: #080a10;
+  --color-bg-surface: #0d1018;
+  --color-bg-card: #131822;
+  --color-bg-card-hover: #1a2030;
+  --color-bg-elevated: #20283a;
+  --color-border: rgba(59, 130, 246, 0.08);
+  --color-border-hover: rgba(59, 130, 246, 0.18);
+  --color-accent: #3b82f6;
+  --color-accent-light: #60a5fa;
+  --color-accent-dim: #1d4ed8;
+  --color-accent-glow: rgba(59, 130, 246, 0.12);
+  --color-accent-glow-strong: rgba(59, 130, 246, 0.3);
+  --font-display: 'Press Start 2P', 'Orbitron', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BASE RESETS & LAYOUT
+   ═══════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background: var(--color-bg-deep);
+}
+
+#app {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SHARED COMPONENT STYLES
+   Buttons, cards, links — all using CSS variables so themes work.
+   ═══════════════════════════════════════════════════════════════════ */
+
+a {
+  color: var(--color-accent-light);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+a:hover {
+  color: var(--color-accent);
+}
+
+/* ── Glow Animations ── */
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--color-accent-glow), 0 0 24px var(--color-accent-glow); }
+  50% { box-shadow: 0 0 16px var(--color-accent-glow-strong), 0 0 48px var(--color-accent-glow); }
+}
+
+@keyframes glow-pulse-text {
+  0%, 100% { text-shadow: 0 0 8px var(--color-accent-glow); }
+  50% { text-shadow: 0 0 20px var(--color-accent-glow-strong); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ── Utility Classes ── */
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease both;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float-gentle 3s ease-in-out infinite;
+}
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
+
+/* ── Scrollbar Styling ── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-bg-elevated);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-dim);
+}
+
+/* ── Selection Styling ── */
+
+::selection {
+  background: var(--color-accent-glow-strong);
+  color: var(--color-text-primary);
+}
+
+/* ── Safe Area Padding for Mobile ── */
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}

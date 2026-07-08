@@ -35,6 +35,20 @@ export interface LogEntry {
   count: number
 }
 
+export type GainToastKind = 'item' | 'xp' | 'gold' | 'level'
+
+export interface GainToast {
+  id: number
+  key: string
+  kind: GainToastKind
+  label: string
+  amount: number | null
+  total: number | null
+  icon: string
+  createdAt: number
+  updatedAt: number
+}
+
 export interface GameSaveData {
   version: number
   saveName: string
@@ -52,6 +66,9 @@ export interface GameSaveData {
 }
 
 const SAVE_VERSION = 1
+const TOAST_DURATION_MS = 3_200
+const TOAST_MERGE_WINDOW_MS = 1_200
+const MAX_GAIN_TOASTS = 6
 
 // ─── Store ─────────────────────────────────────────────────────
 
@@ -78,6 +95,9 @@ export const useGameStore = defineStore('evermarch-game', () => {
 
   const activityLog = ref<LogEntry[]>([])
   let logCounter = 0
+  const gainToasts = ref<GainToast[]>([])
+  let toastCounter = 0
+  const toastTimers = new Map<number, ReturnType<typeof setTimeout>>()
 
   const gameLoaded = ref(false)
 
@@ -113,21 +133,43 @@ export const useGameStore = defineStore('evermarch-game', () => {
 
   // ── Mutations ──
 
-  function addXp(skillId: SkillId, amount: number) {
+  function addXp(skillId: SkillId, amount: number, options: { toast?: boolean } = {}) {
     const skill = skills.value.find((s) => s.id === skillId)
     if (!skill) return
 
+    const shouldToast = options.toast !== false
     const prevLevel = levelForXp(skill.xp)
     skill.xp += amount
     const newLevel = levelForXp(skill.xp)
+    const skillDef = SKILL_LIST.find((s) => s.id === skillId)
+    const skillName = skillDef?.name ?? skillId
+
+    if (shouldToast && amount > 0) {
+      pushGainToast({
+        key: `xp:${skillId}`,
+        kind: 'xp',
+        label: `${skillName} XP`,
+        amount,
+        total: skill.xp,
+        icon: 'Star',
+      })
+    }
 
     if (newLevel > prevLevel) {
-      const skillDef = SKILL_LIST.find((s) => s.id === skillId)
-      const skillName = skillDef?.name ?? skillId
       addLog(
         `${skillName} level increased to ${newLevel}!`,
         'levelup'
       )
+      if (shouldToast) {
+        pushGainToast({
+          key: `level:${skillId}:${newLevel}`,
+          kind: 'level',
+          label: `${skillName} Lv. ${newLevel}`,
+          amount: null,
+          total: null,
+          icon: 'Sparkles',
+        })
+      }
       logTaskUnlocks(skillId, skillName, prevLevel, newLevel)
     }
   }
@@ -143,8 +185,21 @@ export const useGameStore = defineStore('evermarch-game', () => {
     addLog(`Unlocked ${skillName}: ${formatList(taskNames)}`, 'unlock')
   }
 
-  function addItem(resourceId: string, amount: number) {
-    inventory.value[resourceId] = (inventory.value[resourceId] ?? 0) + amount
+  function addItem(resourceId: string, amount: number, options: { toast?: boolean } = {}) {
+    const next = (inventory.value[resourceId] ?? 0) + amount
+    inventory.value[resourceId] = next
+
+    if (options.toast !== false && amount > 0) {
+      const resource = getResourceDefinition(resourceId)
+      pushGainToast({
+        key: `item:${resourceId}`,
+        kind: 'item',
+        label: resource.name,
+        amount,
+        total: next,
+        icon: resource.icon,
+      })
+    }
   }
 
   function removeItem(resourceId: string, amount: number): boolean {
@@ -161,8 +216,18 @@ export const useGameStore = defineStore('evermarch-game', () => {
     return true
   }
 
-  function addGold(amount: number) {
+  function addGold(amount: number, options: { toast?: boolean } = {}) {
     gold.value += amount
+    if (options.toast !== false && amount > 0) {
+      pushGainToast({
+        key: 'gold',
+        kind: 'gold',
+        label: 'Gold',
+        amount,
+        total: gold.value,
+        icon: 'Coins',
+      })
+    }
   }
 
   function sellItem(resourceId: string, amount: number): number {
@@ -242,6 +307,73 @@ export const useGameStore = defineStore('evermarch-game', () => {
 
   // ── Save / Load ──
 
+  // Gain Toasts
+
+  function pushGainToast(input: Omit<GainToast, 'id' | 'createdAt' | 'updatedAt'>) {
+    const now = Date.now()
+    const mergeTarget = gainToasts.value.find((toast) =>
+      toast.key === input.key
+      && toast.kind === input.kind
+      && input.amount !== null
+      && toast.amount !== null
+      && now - toast.updatedAt <= TOAST_MERGE_WINDOW_MS
+    )
+
+    if (mergeTarget && mergeTarget.amount !== null && input.amount !== null) {
+      mergeTarget.amount += input.amount
+      mergeTarget.total = input.total
+      mergeTarget.updatedAt = now
+      scheduleToastRemoval(mergeTarget.id)
+      return
+    }
+
+    toastCounter++
+    const toast: GainToast = {
+      ...input,
+      id: toastCounter,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    gainToasts.value.push(toast)
+    while (gainToasts.value.length > MAX_GAIN_TOASTS) {
+      const removed = gainToasts.value.shift()
+      if (removed) clearToastTimer(removed.id)
+    }
+
+    scheduleToastRemoval(toast.id)
+  }
+
+  function scheduleToastRemoval(toastId: number) {
+    clearToastTimer(toastId)
+    toastTimers.set(toastId, setTimeout(() => {
+      dismissGainToast(toastId)
+    }, TOAST_DURATION_MS))
+  }
+
+  function dismissGainToast(toastId: number) {
+    clearToastTimer(toastId)
+    const index = gainToasts.value.findIndex((toast) => toast.id === toastId)
+    if (index >= 0) {
+      gainToasts.value.splice(index, 1)
+    }
+  }
+
+  function clearToastTimer(toastId: number) {
+    const timer = toastTimers.get(toastId)
+    if (timer) {
+      clearTimeout(timer)
+      toastTimers.delete(toastId)
+    }
+  }
+
+  function clearGainToasts() {
+    for (const toastId of Array.from(toastTimers.keys())) {
+      clearToastTimer(toastId)
+    }
+    gainToasts.value = []
+  }
+
   function serialize(): GameSaveData {
     return {
       version: SAVE_VERSION,
@@ -261,6 +393,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
   }
 
   function deserialize(data: GameSaveData) {
+    clearGainToasts()
     saveName.value = data.saveName ?? 'Adventure'
     createdAt.value = data.createdAt ?? Date.now()
     lastSavedAt.value = data.lastSavedAt ?? Date.now()
@@ -311,7 +444,9 @@ export const useGameStore = defineStore('evermarch-game', () => {
       background: { type: 'background', taskId: getDefaultTaskIdForLane('background'), progress: 0 },
     }
     activityLog.value = []
+    clearGainToasts()
     logCounter = 0
+    toastCounter = 0
     gameLoaded.value = true
   }
 
@@ -326,6 +461,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     gold,
     lanes,
     activityLog,
+    gainToasts,
     gameLoaded,
     // Computed
     totalLevel,
@@ -344,6 +480,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     sellItem,
     setLaneTask,
     addLog,
+    dismissGainToast,
     // Save
     serialize,
     deserialize,

@@ -128,14 +128,14 @@ function completeAction(
   spendTaskCosts(task, store, multiplier)
 
   const xp = task.xpPerAction * multiplier
-  store.addXp(task.skillId, xp)
+  store.addXp(task.skillId, xp, { toast: !silent })
   const gainedDrops = task.drops.map((drop) => ({
     resourceId: drop.resourceId,
     amount: drop.amount * multiplier,
   }))
 
   for (const drop of gainedDrops) {
-    store.addItem(drop.resourceId, drop.amount)
+    store.addItem(drop.resourceId, drop.amount, { toast: !silent })
 
     if (!silent) {
       const label = source === 'active' ? '' : source === 'idle' ? 'Routine: ' : 'Background: '

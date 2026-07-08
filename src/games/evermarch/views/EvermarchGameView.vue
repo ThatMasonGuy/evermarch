@@ -55,6 +55,7 @@
 
     <!-- Settings / Save Modal -->
     <SaveControls :visible="showSettings" @close="showSettings = false" />
+    <GainToasts />
   </div>
 </template>
 
@@ -70,6 +71,7 @@ import SkillsPanel from '../components/SkillsPanel.vue'
 import InventoryPanel from '../components/InventoryPanel.vue'
 import WorldPanel from '../components/WorldPanel.vue'
 import SaveControls from '../components/SaveControls.vue'
+import GainToasts from '../components/GainToasts.vue'
 import { useGameStore } from '../stores/gameStore'
 import { useAuthStore } from '@/platform/stores/authStore'
 import { isFirebaseEnabled } from '@/platform/services/firebase'
@@ -80,7 +82,7 @@ const store = useGameStore()
 const authStore = useAuthStore()
 const activeTab = ref('lanes')
 const showSettings = ref(false)
-const isLogCollapsed = ref(false)
+const isLogCollapsed = ref(true)
 
 onMounted(() => {
   // Load save

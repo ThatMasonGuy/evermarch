@@ -17,8 +17,12 @@ import { SKILLS, type LaneType, type SkillId } from '../data/skills'
 const TICK_INTERVAL = 100 // ms — game ticks 10 times per second
 const AUTO_SAVE_INTERVAL = 30_000 // auto-save every 30 seconds
 const MAX_OFFLINE_MS = 24 * 60 * 60 * 1000
-export const ACTIVE_TARGET_CLICK_INTERVAL_MS = 1000
-export const ACTIVE_MAX_CLICK_INTERVAL_MS = 2000
+export const ACTIVE_ONE_X_MIN_CLICKS_PER_SECOND = 0.5
+export const ACTIVE_TWO_X_MIN_CLICKS_PER_SECOND = 2
+export const ACTIVE_PEAK_CLICKS_PER_SECOND = 3
+export const ACTIVE_STOP_CLICK_INTERVAL_MS = 2000
+export const ACTIVE_TARGET_CLICK_INTERVAL_MS = Math.round(1000 / ACTIVE_PEAK_CLICKS_PER_SECOND)
+export const ACTIVE_MAX_CLICK_INTERVAL_MS = ACTIVE_STOP_CLICK_INTERVAL_MS
 export const MAX_ACTIVE_SPEED_MULTIPLIER = 3
 
 const MIN_ACTIVE_CLICK_INTERVAL_MS = 50
@@ -326,21 +330,18 @@ function getActiveClickCadence(taskId: string, timestamp: number) {
   }
 
   const clickGapMs = Math.max(MIN_ACTIVE_CLICK_INTERVAL_MS, timestamp - previousClickAt)
-  if (clickGapMs > ACTIVE_MAX_CLICK_INTERVAL_MS) {
+  const multiplier = activeSpeedMultiplierForClickGap(clickGapMs)
+  if (multiplier <= 0) {
     activeSavedProgressMs = 0
     return {
       clickGapMs,
       activeWorkMs: 0,
       progressMs: 0,
       savedMs: 0,
-      multiplier: 0,
+      multiplier,
     }
   }
 
-  const multiplier = Math.min(
-    MAX_ACTIVE_SPEED_MULTIPLIER,
-    (MAX_ACTIVE_SPEED_MULTIPLIER * ACTIVE_TARGET_CLICK_INTERVAL_MS) / clickGapMs,
-  )
   const progressMs = clickGapMs * multiplier
 
   return {
@@ -350,6 +351,17 @@ function getActiveClickCadence(taskId: string, timestamp: number) {
     savedMs: Math.max(0, progressMs - clickGapMs),
     multiplier,
   }
+}
+
+export function activeSpeedMultiplierForClickGap(clickGapMs: number | null): number {
+  if (clickGapMs === null || !Number.isFinite(clickGapMs) || clickGapMs <= 0) return 0
+  if (clickGapMs > ACTIVE_STOP_CLICK_INTERVAL_MS) return 0
+
+  const clicksPerSecond = 1000 / Math.max(MIN_ACTIVE_CLICK_INTERVAL_MS, clickGapMs)
+  if (clicksPerSecond >= ACTIVE_PEAK_CLICKS_PER_SECOND) return 3
+  if (clicksPerSecond >= ACTIVE_TWO_X_MIN_CLICKS_PER_SECOND) return 2
+  if (clicksPerSecond >= ACTIVE_ONE_X_MIN_CLICKS_PER_SECOND) return 1
+  return 0
 }
 
 function consumeActiveSavedProgress(currentProgressMs: number, actionProgressMs: number): number {

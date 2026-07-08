@@ -178,14 +178,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Lock, Pickaxe, Sprout, TreePine, Trophy } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
 import {
-  ACTIVE_MAX_CLICK_INTERVAL_MS,
-  ACTIVE_TARGET_CLICK_INTERVAL_MS,
+  ACTIVE_ONE_X_MIN_CLICKS_PER_SECOND,
+  ACTIVE_PEAK_CLICKS_PER_SECOND,
+  ACTIVE_TWO_X_MIN_CLICKS_PER_SECOND,
+  activeSpeedMultiplierForClickGap,
   MAX_ACTIVE_SPEED_MULTIPLIER,
   performActiveAction,
 } from '../engine/gameEngine'
@@ -193,6 +195,8 @@ import { formatCostReadiness, getCostReadiness, hasMissingCosts } from '../utils
 
 const store = useGameStore()
 const isPressed = ref(false)
+const nowMs = ref(Date.now())
+let paceRefreshHandle: ReturnType<typeof setInterval> | null = null
 
 const lane = computed(() => store.lanes.active)
 const task = computed(() => lane.value.taskId ? getTaskById(lane.value.taskId) : null)
@@ -216,16 +220,36 @@ const actionButtonTitle = computed(() => {
   return `Need ${missingCostLabel.value}`
 })
 const maxActiveMultiplier = MAX_ACTIVE_SPEED_MULTIPLIER
-const activePacePercent = computed(() => Math.round(store.activeCadence.ratio * 100))
-const activePaceLabel = computed(() => `${store.activeCadence.multiplier.toFixed(1)}x`)
+const activeDisplayGapMs = computed(() => {
+  if (store.activeCadence.lastClickAt === null || store.activeCadence.clickGapMs === null) return null
+  return Math.max(store.activeCadence.clickGapMs, nowMs.value - store.activeCadence.lastClickAt)
+})
+const activeDisplayMultiplier = computed(() => activeSpeedMultiplierForClickGap(activeDisplayGapMs.value))
+const activePacePercent = computed(() => Math.round((activeDisplayMultiplier.value / MAX_ACTIVE_SPEED_MULTIPLIER) * 100))
+const activePaceLabel = computed(() =>
+  activeDisplayMultiplier.value > 0 ? `${activeDisplayMultiplier.value}x` : 'Stopped'
+)
 const activeProgressLabel = computed(() => {
   if (!task.value) return 'Action 0%'
   return `Action ${Math.floor(Math.min(100, (lane.value.progress / task.value.baseInterval) * 100))}%`
 })
-const activeTargetLabel = computed(() => `Max at ${formatSeconds(ACTIVE_TARGET_CLICK_INTERVAL_MS)}/click`)
+const activeTargetLabel = computed(() => `${formatRate(ACTIVE_PEAK_CLICKS_PER_SECOND)}+/s peak`)
 const activePaceTitle = computed(() =>
-  `Active pace resets after ${formatSeconds(ACTIVE_MAX_CLICK_INTERVAL_MS)} between clicks.`
+  `Stopped below ${formatRate(ACTIVE_ONE_X_MIN_CLICKS_PER_SECOND)}/s. 1x from ${formatRate(ACTIVE_ONE_X_MIN_CLICKS_PER_SECOND)}-${formatRate(ACTIVE_TWO_X_MIN_CLICKS_PER_SECOND - 0.1)}/s, 2x from ${formatRate(ACTIVE_TWO_X_MIN_CLICKS_PER_SECOND)}-${formatRate(ACTIVE_PEAK_CLICKS_PER_SECOND - 0.1)}/s, 3x from ${formatRate(ACTIVE_PEAK_CLICKS_PER_SECOND)}+/s.`
 )
+
+onMounted(() => {
+  paceRefreshHandle = setInterval(() => {
+    nowMs.value = Date.now()
+  }, 100)
+})
+
+onUnmounted(() => {
+  if (paceRefreshHandle) {
+    clearInterval(paceRefreshHandle)
+    paceRefreshHandle = null
+  }
+})
 
 const selectableTasks = computed(() => {
   return ALL_TASKS.filter((t) => t.allowedLanes.includes('active'))
@@ -354,8 +378,8 @@ function formatNumber(value: number): string {
   return Math.floor(value).toLocaleString()
 }
 
-function formatSeconds(ms: number): string {
-  return `${(ms / 1000).toFixed(ms % 1000 === 0 ? 0 : 1)}s`
+function formatRate(value: number): string {
+  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)
 }
 
 </script>

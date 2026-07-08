@@ -48,22 +48,23 @@
               Manually back up to the cloud to transfer between devices.
               Cloud saves do not replace your local save.
             </p>
+            <p class="save-cloud-status">{{ props.cloudSyncDetail }}</p>
             <div class="save-btn-row">
               <button
                 class="save-btn"
-                :disabled="!canUseCloud || cloudBusy"
+                :disabled="!canUseCloud || backupBlocked"
                 @click="handlePushToCloud"
               >
                 <CloudUpload :size="14" />
-                <span>{{ cloudBusy ? 'Saving...' : 'Backup to Cloud' }}</span>
+                <span>{{ cloudBackupButtonLabel }}</span>
               </button>
               <button
                 class="save-btn save-btn-ghost"
-                :disabled="!canUseCloud || cloudBusy"
+                :disabled="!canUseCloud || cloudActionBusy"
                 @click="handlePullFromCloud"
               >
                 <CloudDownload :size="14" />
-                <span>{{ cloudBusy ? 'Loading...' : 'Restore from Cloud' }}</span>
+                <span>{{ restoreBusy ? 'Loading...' : 'Restore from Cloud' }}</span>
               </button>
             </div>
             <p v-if="isLocalPlatformMode" class="save-warning">Local dev mode uses device-only saves.</p>
@@ -99,11 +100,21 @@ import {
 import { useGameStore } from '../stores/gameStore'
 import { useAuthStore } from '@/platform/stores/authStore'
 import { isFirebaseEnabled, isLocalPlatformMode } from '@/platform/services/firebase'
-import { saveLocal, pushToCloud, pullFromCloud, deleteLocalSave } from '../engine/saveSystem'
+import { saveLocal, pullFromCloud, deleteLocalSave } from '../engine/saveSystem'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   visible: boolean
-}>()
+  cloudBusy?: boolean
+  cloudBackupDisabled?: boolean
+  cloudCooldownRemainingMs?: number
+  cloudSyncDetail?: string
+  backupToCloud?: () => Promise<boolean>
+}>(), {
+  cloudBusy: false,
+  cloudBackupDisabled: false,
+  cloudCooldownRemainingMs: 0,
+  cloudSyncDetail: 'Not yet synced to cloud.',
+})
 
 const emit = defineEmits<{
   close: []
@@ -114,7 +125,16 @@ const authStore = useAuthStore()
 
 const isLoggedIn = computed(() => !!authStore.user)
 const canUseCloud = computed(() => isLoggedIn.value && isFirebaseEnabled)
-const cloudBusy = ref(false)
+const restoreBusy = ref(false)
+const cloudActionBusy = computed(() => props.cloudBusy || restoreBusy.value)
+const backupBlocked = computed(() => props.cloudBackupDisabled || restoreBusy.value)
+const cloudBackupButtonLabel = computed(() => {
+  if (props.cloudBusy) return 'Saving...'
+  if (props.cloudCooldownRemainingMs > 0) {
+    return `Backup in ${Math.ceil(props.cloudCooldownRemainingMs / 1000)}s`
+  }
+  return 'Backup to Cloud'
+})
 const cloudMessage = ref('')
 const cloudMessageType = ref<'success' | 'error'>('success')
 
@@ -142,11 +162,9 @@ function handleSaveLocal() {
 }
 
 async function handlePushToCloud() {
-  if (!authStore.user) return
-  cloudBusy.value = true
+  if (!authStore.user || !canUseCloud.value || backupBlocked.value) return
   cloudMessage.value = ''
-  const ok = await pushToCloud(authStore.user.uid)
-  cloudBusy.value = false
+  const ok = props.backupToCloud ? await props.backupToCloud() : false
   if (ok) {
     cloudMessage.value = 'Backed up to cloud successfully.'
     cloudMessageType.value = 'success'
@@ -157,13 +175,13 @@ async function handlePushToCloud() {
 }
 
 async function handlePullFromCloud() {
-  if (!authStore.user) return
+  if (!authStore.user || cloudActionBusy.value) return
   if (!confirm('This will overwrite your local save with the cloud backup. Continue?')) return
 
-  cloudBusy.value = true
+  restoreBusy.value = true
   cloudMessage.value = ''
   const data = await pullFromCloud(authStore.user.uid)
-  cloudBusy.value = false
+  restoreBusy.value = false
 
   if (data) {
     store.deserialize(data)
@@ -260,6 +278,13 @@ function handleReset() {
   font-size: 12px;
   color: var(--color-text-muted);
   line-height: 1.5;
+}
+
+.save-cloud-status {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  font-weight: 600;
 }
 
 .save-btn {

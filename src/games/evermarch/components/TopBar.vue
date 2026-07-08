@@ -29,8 +29,15 @@
     </div>
 
     <div class="em-topbar-right">
-      <button class="em-topbar-btn" title="Save to Cloud" @click="$emit('backup')">
+      <button
+        class="em-topbar-btn em-cloud-sync-btn"
+        :class="{ 'em-cloud-sync-btn-busy': props.cloudBusy }"
+        :title="props.cloudSyncTitle"
+        :disabled="props.cloudSyncDisabled"
+        @click="$emit('backup')"
+      >
         <CloudUpload :size="15" />
+        <span class="em-cloud-sync-text">{{ props.cloudSyncLabel }}</span>
       </button>
       <button class="em-topbar-btn" title="Settings" @click="$emit('settings')">
         <Settings :size="15" />
@@ -43,6 +50,18 @@
 import { RouterLink } from 'vue-router'
 import { ArrowLeft, Compass, Coins, Star, Zap, Settings, CloudUpload } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
+
+const props = withDefaults(defineProps<{
+  cloudSyncLabel?: string
+  cloudSyncTitle?: string
+  cloudSyncDisabled?: boolean
+  cloudBusy?: boolean
+}>(), {
+  cloudSyncLabel: 'No sync',
+  cloudSyncTitle: 'Save to Cloud',
+  cloudSyncDisabled: false,
+  cloudBusy: false,
+})
 
 defineEmits<{
   backup: []
@@ -142,6 +161,32 @@ const store = useGameStore()
 .em-topbar-btn:hover {
   color: var(--color-accent-light);
   background: var(--color-bg-card);
+}
+.em-topbar-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.em-topbar-btn:disabled:hover {
+  color: var(--color-text-muted);
+  background: none;
+}
+
+.em-cloud-sync-btn {
+  width: auto;
+  min-width: 78px;
+  padding: 0 8px;
+  gap: 5px;
+}
+
+.em-cloud-sync-btn-busy {
+  color: var(--color-accent-light);
+}
+
+.em-cloud-sync-text {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {

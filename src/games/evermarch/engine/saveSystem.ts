@@ -63,14 +63,17 @@ export async function pushToCloud(uid: string): Promise<boolean> {
       return false
     }
 
+    const syncedAt = Date.now()
     const data = store.serialize()
-    data.lastSavedAt = Date.now()
+    data.lastSavedAt = syncedAt
+    data.lastCloudSyncedAt = syncedAt
 
     const docRef = doc(firestore, 'users', uid, 'evermarch_saves', 'primary')
     await setDoc(docRef, {
       gameData: JSON.stringify(data),
       saveName: data.saveName,
       lastSavedAt: serverTimestamp(),
+      lastCloudSyncedAt: serverTimestamp(),
       playtime: data.playtime,
       totalLevel: store.totalLevel,
       gold: data.gold,
@@ -78,6 +81,9 @@ export async function pushToCloud(uid: string): Promise<boolean> {
     })
     await syncGlobalStatsContribution(uid, { force: true })
 
+    store.lastSavedAt = syncedAt
+    store.lastCloudSyncedAt = syncedAt
+    saveLocal()
     store.addLog('Save backed up to cloud.', 'system')
     return true
   } catch (e) {

@@ -187,6 +187,7 @@ export interface GameSaveData {
   saveName: string
   createdAt: number
   lastSavedAt: number
+  lastCloudSyncedAt?: number | null
   playtime: number
   skills: SkillState[]
   taskMastery?: Record<string, TaskMasteryState>
@@ -212,7 +213,7 @@ interface TaskActionStatsInput {
   activeSavedMs?: number
 }
 
-const SAVE_VERSION = 3
+const SAVE_VERSION = 4
 const STATS_VERSION = 3
 const ACTIVE_CLICK_SESSION_GAP_MS = 2_000
 const ACTIVE_SAVED_TIME_CAP_MULTIPLIER = 2
@@ -231,6 +232,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
   const saveName = ref('New Adventure')
   const createdAt = ref(Date.now())
   const lastSavedAt = ref(Date.now())
+  const lastCloudSyncedAt = ref<number | null>(null)
   const playtime = ref(0)
 
   const skills = ref<SkillState[]>(
@@ -932,6 +934,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
       saveName: saveName.value,
       createdAt: createdAt.value,
       lastSavedAt: Date.now(),
+      lastCloudSyncedAt: lastCloudSyncedAt.value,
       playtime: playtime.value,
       skills: skills.value.map((s) => ({ ...s })),
       taskMastery: cloneTaskMastery(taskMastery.value),
@@ -951,6 +954,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     saveName.value = data.saveName ?? 'Adventure'
     createdAt.value = data.createdAt ?? Date.now()
     lastSavedAt.value = data.lastSavedAt ?? Date.now()
+    lastCloudSyncedAt.value = normalizeTimestamp(data.lastCloudSyncedAt)
     playtime.value = data.playtime ?? 0
     gold.value = data.gold ?? 0
     inventory.value = data.inventory ?? {}
@@ -992,6 +996,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     saveName.value = name
     createdAt.value = Date.now()
     lastSavedAt.value = Date.now()
+    lastCloudSyncedAt.value = null
     playtime.value = 0
     gold.value = 0
     inventory.value = {}
@@ -1017,6 +1022,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     saveName,
     createdAt,
     lastSavedAt,
+    lastCloudSyncedAt,
     playtime,
     skills,
     taskMastery,

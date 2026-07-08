@@ -1,7 +1,14 @@
 <template>
   <div class="em-app" data-theme="evermarch">
     <!-- Top Bar -->
-    <TopBar @backup="handleBackup" @settings="showSettings = true" />
+    <TopBar
+      :cloud-sync-label="cloudSyncLabel"
+      :cloud-sync-title="cloudSyncTitle"
+      :cloud-sync-disabled="cloudBackupDisabled"
+      :cloud-busy="cloudBusy"
+      @backup="handleBackup"
+      @settings="showSettings = true"
+    />
 
     <!-- Main Layout -->
     <div class="em-layout" :class="{ 'em-layout-log-collapsed': isLogCollapsed }">
@@ -59,14 +66,22 @@
     </div>
 
     <!-- Settings / Save Modal -->
-    <SaveControls :visible="showSettings" @close="showSettings = false" />
+    <SaveControls
+      :visible="showSettings"
+      :cloud-busy="cloudBusy"
+      :cloud-backup-disabled="cloudBackupDisabled"
+      :cloud-cooldown-remaining-ms="cloudCooldownRemainingMs"
+      :cloud-sync-detail="cloudSyncDetail"
+      :backup-to-cloud="handleBackup"
+      @close="showSettings = false"
+    />
     <WelcomeBackModal :summary="offlineSummary" @close="offlineSummary = null" />
     <GainToasts />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Swords } from 'lucide-vue-next'
 import TopBar from '../components/TopBar.vue'
 import SidebarNav from '../components/SidebarNav.vue'
@@ -92,6 +107,12 @@ const activeTab = ref('lanes')
 const showSettings = ref(false)
 const isLogCollapsed = ref(true)
 const offlineSummary = ref<OfflineProgressSummary | null>(null)
+const cloudBusy = ref(false)
+const nowMs = ref(Date.now())
+
+const CLOUD_SAVE_COOLDOWN_MS = 30_000
+
+let cloudStatusTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
   // Load save
@@ -110,30 +131,122 @@ onMounted(() => {
 
   // Save on tab close
   window.addEventListener('beforeunload', handleBeforeUnload)
+  cloudStatusTimer = setInterval(() => {
+    nowMs.value = Date.now()
+  }, 1000)
 })
 
 onUnmounted(() => {
   stopEngine()
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  if (cloudStatusTimer) {
+    clearInterval(cloudStatusTimer)
+    cloudStatusTimer = null
+  }
 })
 
 function handleBeforeUnload() {
   saveLocal()
 }
 
-async function handleBackup() {
+const cloudSyncAgeMs = computed(() => {
+  if (!store.lastCloudSyncedAt) return null
+  return Math.max(0, nowMs.value - store.lastCloudSyncedAt)
+})
+
+const cloudCooldownRemainingMs = computed(() => {
+  if (!store.lastCloudSyncedAt) return 0
+  return Math.max(0, CLOUD_SAVE_COOLDOWN_MS - Math.max(0, nowMs.value - store.lastCloudSyncedAt))
+})
+
+const cloudCooldownRemainingSeconds = computed(() => Math.ceil(cloudCooldownRemainingMs.value / 1000))
+
+const cloudBackupDisabled = computed(() => cloudBusy.value || cloudCooldownRemainingMs.value > 0)
+
+const cloudSyncLabel = computed(() => {
+  if (cloudBusy.value) return 'Saving'
+  if (cloudSyncAgeMs.value === null) return 'No sync'
+  return formatShortDuration(cloudSyncAgeMs.value)
+})
+
+const cloudSyncTitle = computed(() => {
+  if (cloudBusy.value) return 'Saving to cloud'
+  if (cloudSyncAgeMs.value === null) return 'Save to Cloud'
+  const syncedText = formatLastSyncedText(cloudSyncAgeMs.value)
+  if (cloudCooldownRemainingMs.value > 0) {
+    return `${syncedText}. Backup available in ${cloudCooldownRemainingSeconds.value}s.`
+  }
+  return syncedText
+})
+
+const cloudSyncDetail = computed(() => {
+  if (cloudBusy.value) return 'Saving to cloud...'
+  if (cloudSyncAgeMs.value === null) return 'Not yet synced to cloud.'
+  const syncedText = formatLastSyncedText(cloudSyncAgeMs.value)
+  if (cloudCooldownRemainingMs.value > 0) {
+    return `${syncedText}. Next cloud backup in ${cloudCooldownRemainingSeconds.value}s.`
+  }
+  return `${syncedText}.`
+})
+
+function formatShortDuration(ms: number): string {
+  if (ms < 1_000) return 'Now'
+  if (ms < 60_000) return `${Math.floor(ms / 1_000)}s`
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m`
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h`
+  return `${Math.floor(ms / 86_400_000)}d`
+}
+
+function formatReadableDuration(ms: number): string {
+  if (ms < 1_000) return 'just now'
+  if (ms < 60_000) {
+    const seconds = Math.floor(ms / 1_000)
+    return `${seconds}s`
+  }
+  if (ms < 3_600_000) {
+    const minutes = Math.floor(ms / 60_000)
+    return `${minutes}m`
+  }
+  if (ms < 86_400_000) {
+    const hours = Math.floor(ms / 3_600_000)
+    const minutes = Math.floor((ms % 3_600_000) / 60_000)
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+  }
+  const days = Math.floor(ms / 86_400_000)
+  const hours = Math.floor((ms % 86_400_000) / 3_600_000)
+  return hours > 0 ? `${days}d ${hours}h` : `${days}d`
+}
+
+function formatLastSyncedText(ms: number): string {
+  const age = formatReadableDuration(ms)
+  return age === 'just now' ? 'Last synced just now' : `Last synced ${age} ago`
+}
+
+async function handleBackup(): Promise<boolean> {
+  if (cloudBusy.value) return false
+  if (cloudCooldownRemainingMs.value > 0) {
+    store.addLog(`Cloud backup available in ${cloudCooldownRemainingSeconds.value}s.`, 'system')
+    return false
+  }
   if (!authStore.user) {
     store.addLog('Sign in to back up to the cloud.', 'system')
-    return
+    return false
   }
   if (!isFirebaseEnabled) {
     store.addLog('Cloud backup is unavailable in this environment.', 'system')
-    return
+    return false
   }
-  saveLocal()
-  const ok = await pushToCloud(authStore.user.uid)
-  if (!ok) {
-    store.addLog('Cloud backup failed.', 'system')
+  cloudBusy.value = true
+  try {
+    saveLocal()
+    const ok = await pushToCloud(authStore.user.uid)
+    nowMs.value = Date.now()
+    if (!ok) {
+      store.addLog('Cloud backup failed.', 'system')
+    }
+    return ok
+  } finally {
+    cloudBusy.value = false
   }
 }
 </script>

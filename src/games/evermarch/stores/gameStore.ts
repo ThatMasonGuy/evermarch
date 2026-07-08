@@ -70,6 +70,7 @@ export interface TaskStats {
   xp: number
   timeMs: number
   activeWorkMs: number
+  activeSavedMs: number
   idleWorkMs: number
   backgroundWorkMs: number
   offlineWorkMs: number
@@ -87,6 +88,7 @@ export interface SkillStats {
   xp: number
   timeMs: number
   activeWorkMs: number
+  activeSavedMs: number
   idleWorkMs: number
   backgroundWorkMs: number
   offlineWorkMs: number
@@ -97,6 +99,7 @@ export interface SkillStats {
 export interface AccountStats {
   onlinePlayMs: number
   activeWorkMs: number
+  activeSavedMs: number
   idleWorkMs: number
   backgroundWorkMs: number
   offlineCreditedMs: number
@@ -170,12 +173,13 @@ interface TaskActionStatsInput {
   source: StatActionSource
   laneType: LaneType
   xp: number
-  workMs: number
   activeClicks?: number
+  activeSavedMs?: number
 }
 
 const SAVE_VERSION = 2
-const STATS_VERSION = 1
+const STATS_VERSION = 2
+const ACTIVE_CLICK_SESSION_GAP_MS = 2_000
 const TOAST_DURATION_MS = 3_200
 const TOAST_MERGE_WINDOW_MS = 1_200
 const MAX_GAIN_TOASTS = 6
@@ -214,6 +218,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
   const toastTimers = new Map<number, ReturnType<typeof setTimeout>>()
 
   const gameLoaded = ref(false)
+  let lastActiveClickAt: number | null = null
 
   // ── Computed ──
 
@@ -480,12 +485,21 @@ export const useGameStore = defineStore('evermarch-game', () => {
     const skillStats = ensureSkillStats(input.skillId)
     const now = Date.now()
     const activeClicks = input.activeClicks ?? 0
+    const activeSavedMs = input.activeSavedMs ?? 0
+    const activeEngagedMs = activeClicks > 0 ? activeClickEngagementMs(now) : 0
 
-    applyActionStats(taskStats, input, activeClicks, now)
-    applyActionStats(skillStats, input, activeClicks, now)
+    applyActionStats(taskStats, input, activeClicks, activeSavedMs, now)
+    applyActionStats(skillStats, input, activeClicks, activeSavedMs, now)
+
+    if (activeEngagedMs > 0) {
+      applyWorkTime(taskStats, 'active', 'active', activeEngagedMs, now)
+      applyWorkTime(skillStats, 'active', 'active', activeEngagedMs, now)
+      applyAccountWorkTime('active', activeEngagedMs)
+    }
 
     if (activeClicks > 0) {
       stats.value.account.activeClickCount += activeClicks
+      stats.value.account.activeSavedMs += activeSavedMs
     }
   }
 
@@ -559,9 +573,27 @@ export const useGameStore = defineStore('evermarch-game', () => {
     }
   }
 
-  function applyActionStats(target: TaskStats | SkillStats, input: TaskActionStatsInput, activeClicks: number, timestamp: number) {
+  function activeClickEngagementMs(timestamp: number): number {
+    const previousClickAt = lastActiveClickAt
+    lastActiveClickAt = timestamp
+
+    if (previousClickAt === null) return 0
+
+    const gapMs = timestamp - previousClickAt
+    if (gapMs <= 0 || gapMs > ACTIVE_CLICK_SESSION_GAP_MS) return 0
+    return gapMs
+  }
+
+  function applyActionStats(
+    target: TaskStats | SkillStats,
+    input: TaskActionStatsInput,
+    activeClicks: number,
+    activeSavedMs: number,
+    timestamp: number
+  ) {
     target.actions++
     target.xp += input.xp
+    target.activeSavedMs += activeSavedMs
     target.lastWorkedAt = timestamp
     if (target.firstWorkedAt === null) {
       target.firstWorkedAt = timestamp
@@ -742,6 +774,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     gold.value = data.gold ?? 0
     inventory.value = data.inventory ?? {}
     stats.value = normalizeStats(data.stats, inventory.value, playtime.value, gold.value)
+    lastActiveClickAt = null
 
     // Merge skill data — preserve any new skills added after save
     for (const saved of data.skills ?? []) {
@@ -790,6 +823,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     clearGainToasts()
     logCounter = 0
     toastCounter = 0
+    lastActiveClickAt = null
     gameLoaded.value = true
   }
 
@@ -882,6 +916,7 @@ function createTaskStats(): TaskStats {
     xp: 0,
     timeMs: 0,
     activeWorkMs: 0,
+    activeSavedMs: 0,
     idleWorkMs: 0,
     backgroundWorkMs: 0,
     offlineWorkMs: 0,
@@ -901,6 +936,7 @@ function createSkillStats(): SkillStats {
     xp: 0,
     timeMs: 0,
     activeWorkMs: 0,
+    activeSavedMs: 0,
     idleWorkMs: 0,
     backgroundWorkMs: 0,
     offlineWorkMs: 0,
@@ -913,6 +949,7 @@ function createAccountStats(): AccountStats {
   return {
     onlinePlayMs: 0,
     activeWorkMs: 0,
+    activeSavedMs: 0,
     idleWorkMs: 0,
     backgroundWorkMs: 0,
     offlineCreditedMs: 0,
@@ -931,12 +968,13 @@ function normalizeStats(
   currentGold: number,
 ): GameStats {
   const normalized = createDefaultStats()
+  const savedStatsVersion = saved?.version ?? 0
 
   if (saved) {
     normalized.items = normalizeItemStatsMap(saved.items)
-    normalized.tasks = normalizeTaskStatsMap(saved.tasks)
-    normalized.skills = normalizeSkillStatsMap(saved.skills)
-    normalized.account = normalizeAccountStats(saved.account)
+    normalized.tasks = normalizeTaskStatsMap(saved.tasks, savedStatsVersion)
+    normalized.skills = normalizeSkillStatsMap(saved.skills, savedStatsVersion)
+    normalized.account = normalizeAccountStats(saved.account, savedStatsVersion)
   }
 
   seedStatsFromCurrentInventory(normalized, inventorySnapshot)
@@ -971,36 +1009,44 @@ function normalizeItemStatsMap(saved: GameStats['items'] | undefined): GameStats
   return normalized
 }
 
-function normalizeTaskStatsMap(saved: GameStats['tasks'] | undefined): GameStats['tasks'] {
+function normalizeTaskStatsMap(saved: GameStats['tasks'] | undefined, savedStatsVersion: number): GameStats['tasks'] {
   const normalized: GameStats['tasks'] = {}
   for (const [taskId, task] of Object.entries(saved ?? {})) {
-    normalized[taskId] = normalizeTaskStats(task)
+    normalized[taskId] = normalizeTaskStats(task, savedStatsVersion)
   }
   return normalized
 }
 
-function normalizeSkillStatsMap(saved: GameStats['skills'] | undefined): GameStats['skills'] {
+function normalizeSkillStatsMap(saved: GameStats['skills'] | undefined, savedStatsVersion: number): GameStats['skills'] {
   const normalized: GameStats['skills'] = {}
   for (const skill of SKILL_LIST) {
-    normalized[skill.id] = normalizeTaskStats(saved?.[skill.id])
+    normalized[skill.id] = normalizeTaskStats(saved?.[skill.id], savedStatsVersion)
   }
   return normalized
 }
 
-function normalizeTaskStats(saved: TaskStats | SkillStats | undefined): TaskStats {
+function normalizeTaskStats(saved: TaskStats | SkillStats | undefined, savedStatsVersion: number): TaskStats {
+  const numeric = pickNumericTaskStats(saved)
+  if (savedStatsVersion < 2) {
+    numeric.timeMs = Math.max(0, numeric.timeMs - numeric.activeWorkMs)
+    numeric.activeSavedMs = Math.max(numeric.activeSavedMs, numeric.activeWorkMs)
+    numeric.activeWorkMs = 0
+  }
+
   return {
     ...createTaskStats(),
-    ...pickNumericTaskStats(saved),
+    ...numeric,
     firstWorkedAt: normalizeTimestamp(saved?.firstWorkedAt),
     lastWorkedAt: normalizeTimestamp(saved?.lastWorkedAt),
   }
 }
 
-function normalizeAccountStats(saved: AccountStats | undefined): AccountStats {
-  return {
+function normalizeAccountStats(saved: AccountStats | undefined, savedStatsVersion: number): AccountStats {
+  const normalized = {
     ...createAccountStats(),
     onlinePlayMs: nonNegative(saved?.onlinePlayMs),
     activeWorkMs: nonNegative(saved?.activeWorkMs),
+    activeSavedMs: nonNegative(saved?.activeSavedMs),
     idleWorkMs: nonNegative(saved?.idleWorkMs),
     backgroundWorkMs: nonNegative(saved?.backgroundWorkMs),
     offlineCreditedMs: nonNegative(saved?.offlineCreditedMs),
@@ -1010,6 +1056,13 @@ function normalizeAccountStats(saved: AccountStats | undefined): AccountStats {
     totalItemsAcquired: nonNegative(saved?.totalItemsAcquired),
     totalItemsSold: nonNegative(saved?.totalItemsSold),
   }
+
+  if (savedStatsVersion < 2) {
+    normalized.activeSavedMs = Math.max(normalized.activeSavedMs, normalized.activeWorkMs)
+    normalized.activeWorkMs = 0
+  }
+
+  return normalized
 }
 
 function seedStatsFromCurrentInventory(stats: GameStats, inventorySnapshot: Record<string, number>) {
@@ -1058,6 +1111,7 @@ function pickNumericTaskStats(saved: TaskStats | SkillStats | undefined): Omit<T
     xp: nonNegative(saved?.xp),
     timeMs: nonNegative(saved?.timeMs),
     activeWorkMs: nonNegative(saved?.activeWorkMs),
+    activeSavedMs: nonNegative(saved?.activeSavedMs),
     idleWorkMs: nonNegative(saved?.idleWorkMs),
     backgroundWorkMs: nonNegative(saved?.backgroundWorkMs),
     offlineWorkMs: nonNegative(saved?.offlineWorkMs),

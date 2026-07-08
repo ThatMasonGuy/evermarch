@@ -175,17 +175,14 @@ function completeAction(
   const xp = task.xpPerAction * multiplier
   store.addXp(task.skillId, xp, { toast: !silent })
   const laneType = statsLaneType ?? (source === 'offline' ? 'idle' : source)
-  if (source === 'active') {
-    store.recordLaneWork(task.id, laneType, task.baseInterval * multiplier, source)
-  }
   store.recordTaskAction({
     taskId: task.id,
     skillId: task.skillId,
     source,
     laneType,
     xp,
-    workMs: task.baseInterval * multiplier,
     activeClicks: source === 'active' ? 1 : 0,
+    activeSavedMs: source === 'active' ? task.baseInterval * multiplier : 0,
   })
   const gainedDrops = task.drops.map((drop) => ({
     resourceId: drop.resourceId,

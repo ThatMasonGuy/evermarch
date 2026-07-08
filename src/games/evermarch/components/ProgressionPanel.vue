@@ -33,9 +33,21 @@
         <h3>Time</h3>
       </div>
       <div class="progression-stat-grid">
-        <div v-for="stat in timeStats" :key="stat.label" class="progression-stat-row">
-          <span>{{ stat.label }}</span>
+        <div
+          v-for="stat in timeStats"
+          :key="stat.label"
+          class="progression-stat-row"
+          :class="{ 'progression-stat-row-tooltip': stat.tooltip }"
+          :title="stat.tooltip"
+          :tabindex="stat.tooltip ? 0 : undefined"
+          :aria-label="stat.tooltip ? `${stat.label}: ${stat.value}. ${stat.tooltip}` : undefined"
+        >
+          <span>
+            {{ stat.label }}
+            <Info v-if="stat.tooltip" :size="12" />
+          </span>
           <strong>{{ stat.value }}</strong>
+          <span v-if="stat.tooltip" class="progression-tooltip">{{ stat.tooltip }}</span>
         </div>
       </div>
     </section>
@@ -159,6 +171,7 @@ import {
   FlameKindling,
   Gem,
   Hammer,
+  Info,
   ListChecks,
   Package,
   Pickaxe,
@@ -231,7 +244,11 @@ const overviewMetrics = computed(() => [
 const timeStats = computed(() => [
   { label: 'Account Age', value: formatDuration(store.accountAgeMs) },
   { label: 'Online Play', value: formatDuration(account.value.onlinePlayMs) },
-  { label: 'Active Work', value: `${formatDuration(account.value.activeWorkMs)} (${formatNumber(account.value.activeClickCount)} clicks)` },
+  {
+    label: 'Active Work',
+    value: `${formatDuration(account.value.activeWorkMs)} (${formatNumber(account.value.activeClickCount)} clicks)`,
+    tooltip: `Based on ${formatNumber(account.value.activeClickCount)} active clicks, active play saved about ${formatDuration(account.value.activeSavedMs)} of routine play time.`,
+  },
   { label: 'Routine Work', value: formatDuration(account.value.idleWorkMs) },
   { label: 'Background Work', value: formatDuration(account.value.backgroundWorkMs) },
   { label: 'Offline Credited', value: formatDuration(account.value.offlineCreditedMs) },
@@ -334,15 +351,17 @@ function formatDate(value: number | null): string {
 function formatDuration(ms: number): string {
   if (ms <= 0) return '0m'
 
-  const totalMinutes = Math.floor(ms / 60_000)
+  const totalSeconds = Math.floor(ms / 1000)
+  const totalMinutes = Math.floor(totalSeconds / 60)
   const days = Math.floor(totalMinutes / 1440)
   const hours = Math.floor((totalMinutes % 1440) / 60)
   const minutes = totalMinutes % 60
+  const seconds = totalSeconds % 60
 
   if (days > 0) return `${days}d ${hours}h`
   if (hours > 0) return `${hours}h ${minutes}m`
-  if (minutes > 0) return `${minutes}m`
-  return '<1m'
+  if (minutes > 0) return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
+  return `${Math.max(1, seconds)}s`
 }
 </script>
 
@@ -476,6 +495,7 @@ function formatDuration(ms: number): string {
 }
 
 .progression-stat-row {
+  position: relative;
   min-height: 34px;
   display: flex;
   align-items: center;
@@ -487,6 +507,9 @@ function formatDuration(ms: number): string {
 }
 
 .progression-stat-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--color-text-muted);
   font-size: 11px;
 }
@@ -496,6 +519,38 @@ function formatDuration(ms: number): string {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.progression-stat-row-tooltip {
+  cursor: help;
+}
+
+.progression-stat-row-tooltip:hover .progression-tooltip,
+.progression-stat-row-tooltip:focus-within .progression-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.progression-tooltip {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  display: block;
+  padding: 7px 8px;
+  border: 1px solid var(--color-border-hover);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
 .progression-skill-list,

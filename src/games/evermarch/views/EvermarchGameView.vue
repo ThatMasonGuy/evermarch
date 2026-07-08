@@ -4,7 +4,7 @@
     <TopBar @backup="handleBackup" @settings="showSettings = true" />
 
     <!-- Main Layout -->
-    <div class="em-layout">
+    <div class="em-layout" :class="{ 'em-layout-log-collapsed': isLogCollapsed }">
       <!-- Left Sidebar -->
       <SidebarNav v-model="activeTab" />
 
@@ -50,7 +50,7 @@
       </main>
 
       <!-- Right Sidebar: Activity Log -->
-      <ActivityLog />
+      <ActivityLog :collapsed="isLogCollapsed" @update:collapsed="isLogCollapsed = $event" />
     </div>
 
     <!-- Settings / Save Modal -->
@@ -80,6 +80,7 @@ const store = useGameStore()
 const authStore = useAuthStore()
 const activeTab = ref('lanes')
 const showSettings = ref(false)
+const isLogCollapsed = ref(false)
 
 onMounted(() => {
   // Load save
@@ -128,8 +129,8 @@ async function handleBackup() {
 
 <style scoped>
 .em-app {
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   background: var(--color-bg-deep);
   color: var(--color-text-primary);
   display: flex;
@@ -140,27 +141,35 @@ async function handleBackup() {
 /* ── Layout ──────────────────────────────────────────────── */
 .em-layout {
   display: grid;
-  grid-template-columns: 180px 1fr 220px;
+  grid-template-columns: 180px minmax(0, 1fr) 260px;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
+}
+
+.em-layout-log-collapsed {
+  grid-template-columns: 180px minmax(0, 1fr) 52px;
 }
 
 /* ── Main Content ────────────────────────────────────────── */
 .em-main {
   overflow-y: auto;
-  padding: 20px 24px;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px 16px;
 }
 
 /* ── Lanes View ──────────────────────────────────────────── */
 .em-lanes-view {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
+  min-width: 0;
 }
 
 .em-passive-lanes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -206,7 +215,11 @@ async function handleBackup() {
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .em-layout {
-    grid-template-columns: 56px 1fr 180px;
+    grid-template-columns: 56px minmax(0, 1fr) 210px;
+  }
+
+  .em-layout-log-collapsed {
+    grid-template-columns: 56px minmax(0, 1fr) 52px;
   }
 }
 

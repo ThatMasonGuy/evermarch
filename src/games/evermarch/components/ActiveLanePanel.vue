@@ -1,101 +1,87 @@
 <template>
   <div class="active-panel">
-    <!-- Header -->
-    <div class="active-header">
-      <div class="active-label">
-        <div class="active-label-dot"></div>
-        <span>Active</span>
-      </div>
-      <h2 class="active-title" v-if="task">{{ task.name }}</h2>
-      <h2 class="active-title active-title-empty" v-else>No Active Task</h2>
-    </div>
-
-    <!-- Skill Level + XP -->
-    <div class="active-meta" v-if="task && skillDef">
-      <div class="active-skill-badge">
-        <span class="active-skill-name">{{ skillDef.name }} Lv.{{ skillLevel }}</span>
-      </div>
-      <div class="active-xp-bar-container">
-        <div class="active-xp-bar">
-          <div
-            class="active-xp-bar-fill"
-            :style="{ width: (skillProgress * 100) + '%' }"
-          ></div>
+    <div class="active-core">
+      <!-- Header -->
+      <div class="active-header">
+        <div class="active-label">
+          <div class="active-label-dot"></div>
+          <span>Active</span>
         </div>
-        <span class="active-xp-text">{{ xpToNext.toLocaleString() }} XP to next</span>
+        <h2 class="active-title" v-if="task">{{ task.name }}</h2>
+        <h2 class="active-title active-title-empty" v-else>No Active Task</h2>
       </div>
-    </div>
 
-    <!-- Rates Display -->
-    <div class="active-rates" v-if="task">
-      <div class="active-rate">
-        <span class="active-rate-label">Idle Rate:</span>
-        <span class="active-rate-value">+{{ task.drops[0]?.amount ?? 1 }} / {{ (task.baseInterval / 1000).toFixed(0) }}s</span>
+      <!-- Skill Level + XP -->
+      <div class="active-meta" v-if="task && skillDef">
+        <div class="active-skill-badge">
+          <span class="active-skill-name">{{ skillDef.name }} Lv.{{ skillLevel }}</span>
+        </div>
+        <div class="active-xp-bar-container">
+          <div class="active-xp-bar">
+            <div
+              class="active-xp-bar-fill"
+              :style="{ width: (skillProgress * 100) + '%' }"
+            ></div>
+          </div>
+          <span class="active-xp-text">{{ xpToNext.toLocaleString() }} XP to next</span>
+        </div>
       </div>
-      <div class="active-rate active-rate-boosted">
-        <span class="active-rate-label">Active Rate:</span>
-        <span class="active-rate-value">+{{ (task.drops[0]?.amount ?? 1) * task.activeBoostMultiplier }} / click</span>
+
+      <!-- Rates Display -->
+      <div class="active-rates" v-if="task">
+        <div class="active-rate">
+          <span class="active-rate-label">Idle Rate:</span>
+          <span class="active-rate-value">+{{ task.drops[0]?.amount ?? 1 }} / {{ (task.baseInterval / 1000).toFixed(0) }}s</span>
+        </div>
+        <div class="active-rate active-rate-boosted">
+          <span class="active-rate-label">Active Rate:</span>
+          <span class="active-rate-value">+{{ (task.drops[0]?.amount ?? 1) * task.activeBoostMultiplier }} / click</span>
+        </div>
+        <div
+          class="active-rate active-rate-cost"
+          :class="{ 'active-rate-cost-blocked': hasCostBlockers }"
+          v-if="costLabel"
+        >
+          <span class="active-rate-label">Requires:</span>
+          <span class="active-rate-value">{{ costLabel }} / click</span>
+        </div>
+        <div class="active-boost">
+          Active boost: <strong>{{ task.activeBoostMultiplier }}x!</strong>
+        </div>
       </div>
-      <div
-        class="active-rate active-rate-cost"
-        :class="{ 'active-rate-cost-blocked': hasCostBlockers }"
-        v-if="costLabel"
+
+      <!-- Action Button -->
+      <button
+        v-if="task"
+        class="active-action-btn"
+        :class="{
+          'active-action-btn-pressed': isPressed,
+          'active-action-btn-blocked': hasCostBlockers,
+        }"
+        :title="actionButtonTitle"
+        @mousedown="onPress"
+        @mouseup="isPressed = false"
+        @mouseleave="isPressed = false"
+        @click="onAction"
       >
-        <span class="active-rate-label">Requires:</span>
-        <span class="active-rate-value">{{ costLabel }} / click</span>
-      </div>
-      <div class="active-boost">
-        Active boost: <strong>{{ task.activeBoostMultiplier }}x!</strong>
-      </div>
+        <Pickaxe v-if="task.skillId === 'mining'" :size="20" />
+        <TreePine v-else-if="task.skillId === 'woodcutting'" :size="20" />
+        <Fish v-else-if="task.skillId === 'fishing'" :size="20" />
+        <FlameKindling v-else-if="task.skillId === 'firemaking' || task.skillId === 'cooking'" :size="20" />
+        <Hammer v-else-if="task.skillId === 'smithing' || task.skillId === 'fletching' || task.skillId === 'crafting'" :size="20" />
+        <BookOpen v-else-if="task.skillId === 'runecrafting'" :size="20" />
+        <Sprout v-else :size="20" />
+        <span>{{ actionLabel }}</span>
+      </button>
+      <p class="active-blocked-hint" v-if="hasCostBlockers">
+        Waiting for {{ missingCostLabel }}.
+      </p>
     </div>
-
-    <!-- Action Button -->
-    <button
-      v-if="task"
-      class="active-action-btn"
-      :class="{
-        'active-action-btn-pressed': isPressed,
-        'active-action-btn-blocked': hasCostBlockers,
-      }"
-      :title="actionButtonTitle"
-      @mousedown="onPress"
-      @mouseup="isPressed = false"
-      @mouseleave="isPressed = false"
-      @click="onAction"
-    >
-      <Pickaxe v-if="task.skillId === 'mining'" :size="20" />
-      <TreePine v-else-if="task.skillId === 'woodcutting'" :size="20" />
-      <Fish v-else-if="task.skillId === 'fishing'" :size="20" />
-      <FlameKindling v-else-if="task.skillId === 'firemaking' || task.skillId === 'cooking'" :size="20" />
-      <Hammer v-else-if="task.skillId === 'smithing' || task.skillId === 'fletching' || task.skillId === 'crafting'" :size="20" />
-      <BookOpen v-else-if="task.skillId === 'runecrafting'" :size="20" />
-      <Sprout v-else :size="20" />
-      <span>{{ actionLabel }}</span>
-    </button>
-    <p class="active-blocked-hint" v-if="hasCostBlockers">
-      Waiting for {{ missingCostLabel }}.
-    </p>
 
     <!-- Task Selector -->
     <div class="active-task-select" v-if="selectableSkills.length > 0">
-      <span class="active-task-select-label">Active task type</span>
-      <div class="active-skill-options">
-        <button
-          v-for="skill in selectableSkills"
-          :key="skill.id"
-          type="button"
-          class="active-skill-option"
-          :class="{ 'active-skill-option-current': skill.id === selectedSkillId }"
-          :disabled="!hasUnlockedTasks(skill.id)"
-          :title="skillTabTitle(skill.id)"
-          @click="selectSkill(skill.id)"
-        >
-          {{ skill.name }}
-          <span class="active-task-option-level">Lv.{{ store.getSkillLevel(skill.id) }}</span>
-        </button>
-      </div>
-      <div class="active-task-select-row">
-        <span class="active-task-select-label">{{ taskSelectLabel }}</span>
+      <div class="active-task-select-top">
+        <span class="active-task-select-label">Active skill</span>
         <button
           v-if="canUpgradeTask"
           type="button"
@@ -107,17 +93,54 @@
           <span>Use {{ upgradeTaskLabel }}</span>
         </button>
       </div>
-      <div class="active-task-options">
+      <div class="active-skill-options" aria-label="Active skill">
+        <button
+          v-for="skill in selectableSkills"
+          :key="skill.id"
+          type="button"
+          class="active-skill-option"
+          :class="{ 'active-skill-option-current': skill.id === selectedSkillId }"
+          :disabled="!hasUnlockedTasks(skill.id)"
+          :title="skillTabTitle(skill.id)"
+          @click="selectSkill(skill.id)"
+        >
+          <Pickaxe v-if="skill.icon === 'Pickaxe'" :size="14" />
+          <TreePine v-else-if="skill.icon === 'TreePine'" :size="14" />
+          <Fish v-else-if="skill.icon === 'Fish'" :size="14" />
+          <Sprout v-else-if="skill.icon === 'Sprout'" :size="14" />
+          <FlameKindling v-else-if="skill.icon === 'FlameKindling'" :size="14" />
+          <Hammer v-else-if="skill.icon === 'Hammer'" :size="14" />
+          <BookOpen v-else-if="skill.icon === 'BookOpen'" :size="14" />
+          <Hammer v-else :size="14" />
+          <span>{{ skill.name }}</span>
+          <small>Lv.{{ store.getSkillLevel(skill.id) }}</small>
+        </button>
+      </div>
+      <div class="active-task-select-row">
+        <span class="active-task-select-label">{{ taskSelectLabel }}</span>
+        <span class="active-task-count">{{ unlockedTasksForSelectedSkill.length }} / {{ tasksForSelectedSkill.length }} unlocked</span>
+      </div>
+      <div class="active-task-options" role="listbox" :aria-label="taskSelectLabel">
         <button
           v-for="t in tasksForSelectedSkill"
           :key="t.id"
           class="active-task-option"
-          :class="{ 'active-task-option-current': t.id === lane.taskId }"
-          :disabled="store.getSkillLevel(t.skillId) < t.levelRequired"
+          :class="{
+            'active-task-option-current': t.id === lane.taskId,
+            'active-task-option-locked': !canUseTask(t),
+          }"
+          :aria-selected="t.id === lane.taskId"
+          :disabled="!canUseTask(t)"
           @click="selectTask(t.id)"
         >
-          {{ taskChoiceLabel(t) }}
-          <span class="active-task-option-level">Lv.{{ t.levelRequired }}</span>
+          <span class="active-task-option-main">
+            <span class="active-task-option-name">{{ taskChoiceLabel(t) }}</span>
+            <Lock v-if="!canUseTask(t)" :size="12" />
+          </span>
+          <span class="active-task-option-meta">
+            <span>Lv.{{ t.levelRequired }}</span>
+            <span v-if="t.id === lane.taskId">Current</span>
+          </span>
         </button>
       </div>
     </div>
@@ -131,7 +154,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Pickaxe, Sprout, TreePine } from 'lucide-vue-next'
+import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Lock, Pickaxe, Sprout, TreePine } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
@@ -178,6 +201,7 @@ const tasksForSelectedSkill = computed(() => {
   if (!selectedSkillId.value) return []
   return selectableTasks.value.filter((t) => t.skillId === selectedSkillId.value)
 })
+const unlockedTasksForSelectedSkill = computed(() => tasksForSelectedSkill.value.filter(canUseTask))
 const bestUnlockedTask = computed(() => {
   if (!selectedSkillId.value) return null
   return bestUnlockedTaskForSkill(selectedSkillId.value)
@@ -218,6 +242,10 @@ function onAction() {
 
 function selectTask(taskId: string) {
   store.setLaneTask('active', taskId)
+}
+
+function canUseTask(taskDef: TaskDefinition): boolean {
+  return store.getSkillLevel(taskDef.skillId) >= taskDef.levelRequired
 }
 
 function selectBestTask() {
@@ -277,11 +305,11 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 <style scoped>
 .active-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  padding: 32px 24px;
+  display: grid;
+  grid-template-columns: minmax(240px, 0.85fr) minmax(340px, 1.15fr);
+  align-items: stretch;
+  gap: 14px;
+  padding: 14px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-accent);
   background: linear-gradient(
@@ -291,10 +319,20 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
     var(--color-bg-card) 100%
   );
   box-shadow:
-    0 0 30px rgba(52, 211, 153, 0.08),
+    0 0 24px rgba(52, 211, 153, 0.08),
     inset 0 1px 0 rgba(52, 211, 153, 0.1);
   position: relative;
   overflow: hidden;
+}
+
+.active-core {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 14px 6px 4px;
 }
 
 /* Decorative corner accents */
@@ -324,7 +362,8 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .active-label {
@@ -336,7 +375,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   background: rgba(52, 211, 153, 0.12);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 1.5px;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: var(--color-accent-light);
 }
@@ -356,10 +395,11 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 .active-title {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--color-text-primary);
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .active-title-empty {
@@ -372,7 +412,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   align-items: center;
   gap: 8px;
   width: 100%;
-  max-width: 360px;
+  max-width: 380px;
 }
 
 .active-skill-badge {
@@ -411,13 +451,16 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 .active-rates {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 6px;
+  width: 100%;
+  max-width: 360px;
 }
 
 .active-rate {
   display: flex;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 6px;
   font-size: 13px;
 }
 
@@ -441,12 +484,12 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .active-boost {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-accent-light);
-  margin-top: 4px;
+  margin-top: 2px;
 }
 .active-boost strong {
-  font-size: 18px;
+  font-size: 17px;
   font-family: var(--font-display);
 }
 
@@ -456,7 +499,9 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 14px 48px;
+  width: min(100%, 320px);
+  min-height: 44px;
+  padding: 10px 20px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-accent);
   background: linear-gradient(
@@ -468,7 +513,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0;
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -528,28 +573,42 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 .active-task-select {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
   width: 100%;
-  max-width: 400px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
+  min-width: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--color-border);
 }
 
 .active-task-select-label {
   font-size: 11px;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
+}
+
+.active-task-select-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
 }
 
 .active-task-select-row {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.active-task-count {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .active-task-upgrade {
@@ -575,21 +634,26 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .active-task-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .active-skill-options {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
-  justify-content: center;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .active-skill-option {
-  padding: 6px 12px;
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg-card);
@@ -615,9 +679,14 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   background: var(--color-accent-glow);
   color: var(--color-accent-light);
 }
+.active-skill-option small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
 
 .active-task-option {
-  padding: 6px 14px;
+  min-height: 48px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg-card);
@@ -627,10 +696,14 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   cursor: pointer;
   transition: all var(--transition-fast);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
   gap: 6px;
+  text-align: left;
+  min-width: 0;
 }
-.active-task-option:hover {
+.active-task-option:hover:not(:disabled) {
   border-color: var(--color-border-hover);
   color: var(--color-text-primary);
 }
@@ -643,9 +716,30 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   background: var(--color-accent-glow);
   color: var(--color-accent-light);
 }
-.active-task-option-level {
+
+.active-task-option-locked {
+  background: var(--color-bg-surface);
+}
+
+.active-task-option-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.active-task-option-name {
+  overflow-wrap: anywhere;
+}
+
+.active-task-option-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 10px;
   color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .active-empty {
@@ -653,5 +747,18 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   text-align: center;
   color: var(--color-text-muted);
   font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .active-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .active-task-select {
+    padding-left: 0;
+    padding-top: 12px;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
 }
 </style>

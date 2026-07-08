@@ -85,7 +85,8 @@
       </div>
 
       <div class="passive-select-row">
-        <label class="passive-select-label" :for="taskSelectId">{{ taskSelectLabel }}</label>
+        <span class="passive-select-label">{{ taskSelectLabel }}</span>
+        <span class="passive-task-count">{{ unlockedTasksForSelectedSkill.length }} / {{ tasksForSelectedSkill.length }} unlocked</span>
         <button
           v-if="canUpgradeTask"
           type="button"
@@ -97,24 +98,28 @@
           <span>Use {{ upgradeTaskLabel }}</span>
         </button>
       </div>
-      <select
-        :id="taskSelectId"
-        class="passive-select"
-        :value="lane.taskId ?? ''"
-        :disabled="tasksForSelectedSkill.length === 0"
-        @change="onSelectTask(($event.target as HTMLSelectElement).value)"
-      >
-        <option value="" disabled>{{ taskSelectPlaceholder }}</option>
-        <option
+      <div class="passive-task-options" role="listbox" :aria-label="taskSelectLabel">
+        <button
           v-for="t in tasksForSelectedSkill"
           :key="t.id"
-          :value="t.id"
-          :disabled="store.getSkillLevel(t.skillId) < t.levelRequired"
+          type="button"
+          class="passive-task-option"
+          :class="{
+            'passive-task-option-current': t.id === lane.taskId,
+            'passive-task-option-locked': !canUseTask(t),
+          }"
+          :aria-selected="t.id === lane.taskId"
+          :disabled="!canUseTask(t)"
+          @click="selectTask(t.id)"
         >
-          {{ taskChoiceLabel(t) }} (Lv.{{ t.levelRequired }})
-          {{ store.getSkillLevel(t.skillId) < t.levelRequired ? ' - Locked' : '' }}
-        </option>
-      </select>
+          <span class="passive-task-option-name">{{ taskChoiceLabel(t) }}</span>
+          <span class="passive-task-option-meta">
+            <span>Lv.{{ t.levelRequired }}</span>
+            <Lock v-if="!canUseTask(t)" :size="11" />
+            <span v-else-if="t.id === lane.taskId">Current</span>
+          </span>
+        </button>
+      </div>
     </div>
 
     <div v-if="!task" class="passive-empty">
@@ -125,7 +130,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowUpRight, BookOpen, Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer } from 'lucide-vue-next'
+import { ArrowUpRight, BookOpen, Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer, Lock } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { getTaskById, ALL_TASKS, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
@@ -174,6 +179,7 @@ const tasksForSelectedSkill = computed(() => {
   if (!selectedSkillId.value) return []
   return selectableTasks.value.filter((t) => t.skillId === selectedSkillId.value)
 })
+const unlockedTasksForSelectedSkill = computed(() => tasksForSelectedSkill.value.filter(canUseTask))
 const bestUnlockedTask = computed(() => {
   if (!selectedSkillId.value) return null
   return bestUnlockedTaskForSkill(selectedSkillId.value)
@@ -184,16 +190,16 @@ const canUpgradeTask = computed(() => {
 const upgradeTaskLabel = computed(() => bestUnlockedTask.value ? taskChoiceLabel(bestUnlockedTask.value) : '')
 const upgradeTaskTitle = computed(() => upgradeTaskLabel.value ? `Use best unlocked task: ${upgradeTaskLabel.value}` : '')
 
-const taskSelectId = computed(() => `passive-${props.laneType}-task-select`)
 const taskSelectLabel = computed(() =>
   selectedSkillId.value ? taskSelectorLabel(selectedSkillId.value) : 'Task'
 )
-const taskSelectPlaceholder = computed(() => `Choose ${taskSelectLabel.value.toLowerCase()}...`)
 
-function onSelectTask(taskId: string) {
-  if (taskId) {
-    store.setLaneTask(props.laneType, taskId)
-  }
+function selectTask(taskId: string) {
+  store.setLaneTask(props.laneType, taskId)
+}
+
+function canUseTask(taskDef: TaskDefinition): boolean {
+  return store.getSkillLevel(taskDef.skillId) >= taskDef.levelRequired
 }
 
 function selectBestTask() {
@@ -254,13 +260,14 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 <style scoped>
 .passive-panel {
-  padding: 16px;
+  min-width: 0;
+  padding: 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-card);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   transition: all var(--transition-fast);
 }
 .passive-panel:hover {
@@ -271,16 +278,23 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .passive-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text-primary);
+}
+
+.passive-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .passive-dot {
@@ -317,8 +331,8 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .passive-icon-ring {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: 2px solid var(--color-border-hover);
   display: flex;
@@ -350,6 +364,9 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .passive-xp-row {
@@ -378,7 +395,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .passive-progress-bar {
-  height: 6px;
+  height: 5px;
   background: var(--color-bg-elevated);
   border-radius: 3px;
   overflow: hidden;
@@ -410,24 +427,27 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .passive-selector {
-  padding-top: 4px;
+  padding-top: 2px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .passive-skill-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .passive-skill-tab {
-  min-height: 32px;
+  flex: 0 0 auto;
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 9px;
+  padding: 5px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg-surface);
@@ -460,7 +480,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 .passive-select-label {
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -468,13 +488,20 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 .passive-select-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   flex-wrap: wrap;
 }
 
+.passive-task-count {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  margin-right: auto;
+}
+
 .passive-task-upgrade {
-  min-height: 24px;
+  min-height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -496,28 +523,74 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   background: var(--color-accent-glow);
 }
 
-.passive-select {
-  width: 100%;
-  padding: 6px 10px;
+.passive-task-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+  gap: 6px;
+  max-height: 94px;
+  overflow-y: auto;
+  padding-right: 3px;
+}
+
+.passive-task-option {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg-surface);
   color: var(--color-text-secondary);
   font-family: var(--font-body);
-  font-size: 12px;
-  outline: none;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
   cursor: pointer;
+  transition: all var(--transition-fast);
 }
-.passive-select:disabled {
-  opacity: 0.6;
+
+.passive-task-option:hover:not(:disabled) {
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+  background: var(--color-bg-card-hover);
+}
+
+.passive-task-option:disabled {
+  opacity: 0.48;
   cursor: not-allowed;
 }
-.passive-select:focus {
+
+.passive-task-option-current {
   border-color: var(--color-accent);
+  color: var(--color-accent-light);
+  background: var(--color-accent-glow);
 }
-.passive-select option {
-  background: var(--color-bg-surface);
-  color: var(--color-text-secondary);
+
+.passive-task-option-locked {
+  background: var(--color-bg-elevated);
+}
+
+.passive-task-option-name {
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.passive-task-option-meta {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .passive-empty {

@@ -6,6 +6,8 @@
         :key="tab.id"
         class="em-sidebar-btn"
         :class="{ 'em-sidebar-btn-active': modelValue === tab.id }"
+        :aria-label="tab.label"
+        :title="tab.label"
         @click="$emit('update:modelValue', tab.id)"
       >
         <component :is="tab.icon" :size="18" />
@@ -18,7 +20,7 @@
 
 <script setup lang="ts">
 import { markRaw } from 'vue'
-import { BookOpen, Zap, MapPin, Swords, Package } from 'lucide-vue-next'
+import { BarChart3, BookOpen, Zap, MapPin, Swords, Package } from 'lucide-vue-next'
 
 defineProps<{
   modelValue: string
@@ -31,6 +33,7 @@ defineEmits<{
 const tabs = [
   { id: 'skills', label: 'Skills', icon: markRaw(BookOpen), indicator: false },
   { id: 'lanes', label: 'Lanes', icon: markRaw(Zap), indicator: true },
+  { id: 'progression', label: 'Progress', icon: markRaw(BarChart3), indicator: false },
   { id: 'world', label: 'World', icon: markRaw(MapPin), indicator: false },
   { id: 'delve', label: 'Delve', icon: markRaw(Swords), indicator: false },
   { id: 'inventory', label: 'Inventory', icon: markRaw(Package), indicator: false },

@@ -37,6 +37,11 @@
           <WorldPanel />
         </div>
 
+        <!-- Progression View -->
+        <div v-else-if="activeTab === 'progression'" class="animate-fade-in">
+          <ProgressionPanel />
+        </div>
+
         <!-- Delve (Placeholder) -->
         <div v-else-if="activeTab === 'delve'" class="em-placeholder animate-fade-in">
           <div class="em-placeholder-icon">
@@ -71,6 +76,7 @@ import PassiveLanePanel from '../components/PassiveLanePanel.vue'
 import SkillsPanel from '../components/SkillsPanel.vue'
 import InventoryPanel from '../components/InventoryPanel.vue'
 import WorldPanel from '../components/WorldPanel.vue'
+import ProgressionPanel from '../components/ProgressionPanel.vue'
 import SaveControls from '../components/SaveControls.vue'
 import WelcomeBackModal from '../components/WelcomeBackModal.vue'
 import GainToasts from '../components/GainToasts.vue'

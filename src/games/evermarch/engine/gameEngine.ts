@@ -10,23 +10,66 @@
 
 import { useGameStore } from '../stores/gameStore'
 import { getTaskById, type ResourceDrop, type TaskDefinition } from '../data/tasks'
-import { getResourceName } from '../data/resources'
+import { getResourceDefinition, getResourceName } from '../data/resources'
 import { saveLocal } from './saveSystem'
-import type { LaneType } from '../data/skills'
+import { SKILLS, type LaneType, type SkillId } from '../data/skills'
 
 const TICK_INTERVAL = 100 // ms — game ticks 10 times per second
 const AUTO_SAVE_INTERVAL = 30_000 // auto-save every 30 seconds
+const MAX_OFFLINE_MS = 24 * 60 * 60 * 1000
 
 let tickHandle: ReturnType<typeof setInterval> | null = null
 let lastTickTime = 0
 let lastAutoSave = 0
 
-type PassiveLaneType = Extract<LaneType, 'idle' | 'background'>
+export type PassiveLaneType = Extract<LaneType, 'idle' | 'background'>
 type ActionSource = 'active' | PassiveLaneType | 'offline'
 
 interface ActionResult {
   xp: number
   drops: ResourceDrop[]
+}
+
+export interface OfflineResourceGain {
+  resourceId: string
+  name: string
+  icon: string
+  amount: number
+  total: number
+}
+
+export interface OfflineSkillGain {
+  skillId: SkillId
+  name: string
+  icon: string
+  xp: number
+  levelBefore: number
+  levelAfter: number
+}
+
+export interface OfflineLaneGain {
+  laneType: PassiveLaneType
+  label: string
+  taskId: string
+  taskName: string
+  actions: number
+  xp: number
+  blocked: boolean
+}
+
+export interface OfflineProgressSummary {
+  elapsedMs: number
+  processedMs: number
+  capped: boolean
+  totalXp: number
+  resources: OfflineResourceGain[]
+  skills: OfflineSkillGain[]
+  lanes: OfflineLaneGain[]
+}
+
+const PASSIVE_LANE_LABELS: Record<PassiveLaneType, string> = {
+  idle: 'Routine',
+  background: 'Background',
 }
 
 /**
@@ -203,54 +246,58 @@ export function performActiveAction() {
  * Calculate and apply offline progress for idle + background lanes.
  * Active lane does NOT progress offline.
  */
-export function processOfflineProgress(lastSavedAt: number) {
+export function processOfflineProgress(lastSavedAt: number): OfflineProgressSummary | null {
   const store = useGameStore()
   const now = Date.now()
   const elapsed = now - lastSavedAt
 
-  if (elapsed < 1000) return // Less than 1 second, skip
+  if (elapsed < 1000) return null // Less than 1 second, skip
 
-  const maxOffline = 24 * 60 * 60 * 1000 // Cap at 24 hours
-  const offlineMs = Math.min(elapsed, maxOffline)
-
-  let totalXpGained = 0
-  const resourcesGained: Record<string, number> = {}
-
-  // Process idle lane
-  processLaneOffline('idle', offlineMs, store, resourcesGained, (xp) => { totalXpGained += xp })
-
-  // Process background lane
-  processLaneOffline('background', offlineMs, store, resourcesGained, (xp) => { totalXpGained += xp })
-
-  // Log offline gains
-  if (totalXpGained > 0) {
-    store.addLog(`Offline progress: +${totalXpGained.toLocaleString()} XP`, 'offline')
+  const offlineMs = Math.min(elapsed, MAX_OFFLINE_MS)
+  const summary: OfflineProgressSummary = {
+    elapsedMs: elapsed,
+    processedMs: offlineMs,
+    capped: elapsed > MAX_OFFLINE_MS,
+    totalXp: 0,
+    resources: [],
+    skills: [],
+    lanes: [],
   }
 
-  for (const [resourceId, amount] of Object.entries(resourcesGained)) {
-    if (amount > 0) {
-      store.addLog(
-        `Offline progress: +${amount} ${getResourceName(resourceId)}`,
-        'offline'
-      )
-    }
+  // Process idle lane
+  processLaneOffline('idle', offlineMs, store, summary)
+
+  // Process background lane
+  processLaneOffline('background', offlineMs, store, summary)
+
+  // Log offline gains
+  if (summary.totalXp > 0) {
+    store.addLog(`Offline progress: +${summary.totalXp.toLocaleString()} XP`, 'offline')
+  }
+
+  for (const resource of summary.resources) {
+    store.addLog(
+      `Offline progress: +${resource.amount.toLocaleString()} ${resource.name}`,
+      'offline'
+    )
   }
 
   const minutes = Math.floor(offlineMs / 60_000)
   if (minutes >= 1) {
     store.addLog(
-      `Welcome back! You were away for ${formatDuration(offlineMs)}.`,
+      `Welcome back! You were away for ${formatDuration(offlineMs)}.${summary.capped ? ' Offline gains capped at 24h.' : ''}`,
       'system'
     )
   }
+
+  return hasOfflineGains(summary) ? summary : null
 }
 
 function processLaneOffline(
   laneType: PassiveLaneType,
   offlineMs: number,
   store: ReturnType<typeof useGameStore>,
-  resourcesGained: Record<string, number>,
-  onXp: (xp: number) => void
+  summary: OfflineProgressSummary
 ) {
   const lane = store.lanes[laneType]
   if (!lane.taskId) return
@@ -267,18 +314,101 @@ function processLaneOffline(
 
   if (actionCount <= 0) return
 
+  const laneSummary = getOfflineLaneSummary(summary, laneType, task)
+
+  // Replay every completed action so future random drops resolve the same way offline.
   for (let index = 0; index < actionCount; index++) {
+    const levelBefore = store.getSkillLevel(task.skillId)
     const result = completeAction(task, store, 'offline', true)
     if (!result) {
       lane.progress = 0
+      laneSummary.blocked = true
       break
     }
 
-    onXp(result.xp)
+    const levelAfter = store.getSkillLevel(task.skillId)
+    summary.totalXp += result.xp
+    laneSummary.actions++
+    laneSummary.xp += result.xp
+    addOfflineSkillGain(summary, task.skillId, result.xp, levelBefore, levelAfter)
+
     for (const drop of result.drops) {
-      resourcesGained[drop.resourceId] = (resourcesGained[drop.resourceId] ?? 0) + drop.amount
+      addOfflineResourceGain(summary, drop.resourceId, drop.amount, store.getItemCount(drop.resourceId))
     }
   }
+}
+
+function getOfflineLaneSummary(
+  summary: OfflineProgressSummary,
+  laneType: PassiveLaneType,
+  task: TaskDefinition
+): OfflineLaneGain {
+  let entry = summary.lanes.find((lane) => lane.laneType === laneType && lane.taskId === task.id)
+  if (!entry) {
+    entry = {
+      laneType,
+      label: PASSIVE_LANE_LABELS[laneType],
+      taskId: task.id,
+      taskName: task.name,
+      actions: 0,
+      xp: 0,
+      blocked: false,
+    }
+    summary.lanes.push(entry)
+  }
+  return entry
+}
+
+function addOfflineSkillGain(
+  summary: OfflineProgressSummary,
+  skillId: SkillId,
+  xp: number,
+  levelBefore: number,
+  levelAfter: number
+) {
+  const skill = SKILLS[skillId]
+  let entry = summary.skills.find((gain) => gain.skillId === skillId)
+  if (!entry) {
+    entry = {
+      skillId,
+      name: skill.name,
+      icon: skill.icon,
+      xp: 0,
+      levelBefore,
+      levelAfter,
+    }
+    summary.skills.push(entry)
+  }
+
+  entry.xp += xp
+  entry.levelAfter = Math.max(entry.levelAfter, levelAfter)
+}
+
+function addOfflineResourceGain(
+  summary: OfflineProgressSummary,
+  resourceId: string,
+  amount: number,
+  total: number
+) {
+  const resource = getResourceDefinition(resourceId)
+  let entry = summary.resources.find((gain) => gain.resourceId === resourceId)
+  if (!entry) {
+    entry = {
+      resourceId,
+      name: resource.name,
+      icon: resource.icon,
+      amount: 0,
+      total,
+    }
+    summary.resources.push(entry)
+  }
+
+  entry.amount += amount
+  entry.total = total
+}
+
+function hasOfflineGains(summary: OfflineProgressSummary): boolean {
+  return summary.totalXp > 0 || summary.resources.some((resource) => resource.amount > 0)
 }
 
 function formatDuration(ms: number): string {

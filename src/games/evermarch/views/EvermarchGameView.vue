@@ -55,6 +55,7 @@
 
     <!-- Settings / Save Modal -->
     <SaveControls :visible="showSettings" @close="showSettings = false" />
+    <WelcomeBackModal :summary="offlineSummary" @close="offlineSummary = null" />
     <GainToasts />
   </div>
 </template>
@@ -71,11 +72,12 @@ import SkillsPanel from '../components/SkillsPanel.vue'
 import InventoryPanel from '../components/InventoryPanel.vue'
 import WorldPanel from '../components/WorldPanel.vue'
 import SaveControls from '../components/SaveControls.vue'
+import WelcomeBackModal from '../components/WelcomeBackModal.vue'
 import GainToasts from '../components/GainToasts.vue'
 import { useGameStore } from '../stores/gameStore'
 import { useAuthStore } from '@/platform/stores/authStore'
 import { isFirebaseEnabled } from '@/platform/services/firebase'
-import { startEngine, stopEngine, processOfflineProgress } from '../engine/gameEngine'
+import { startEngine, stopEngine, processOfflineProgress, type OfflineProgressSummary } from '../engine/gameEngine'
 import { loadLocal, saveLocal, pushToCloud } from '../engine/saveSystem'
 
 const store = useGameStore()
@@ -83,6 +85,7 @@ const authStore = useAuthStore()
 const activeTab = ref('lanes')
 const showSettings = ref(false)
 const isLogCollapsed = ref(true)
+const offlineSummary = ref<OfflineProgressSummary | null>(null)
 
 onMounted(() => {
   // Load save
@@ -90,7 +93,7 @@ onMounted(() => {
   if (savedData) {
     store.deserialize(savedData)
     // Process offline gains for idle + background (NOT active)
-    processOfflineProgress(savedData.lastSavedAt)
+    offlineSummary.value = processOfflineProgress(savedData.lastSavedAt)
   } else {
     store.resetToDefaults()
     store.addLog('Welcome to Evermarch!', 'system')

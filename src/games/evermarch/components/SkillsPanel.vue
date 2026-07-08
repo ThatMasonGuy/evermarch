@@ -29,7 +29,13 @@
         <div class="skill-info">
           <div class="skill-title-row">
             <div class="skill-name">{{ skill.def.name }}</div>
-            <div class="skill-level">Lv. {{ skill.level }}</div>
+            <div class="skill-title-meta">
+              <div class="skill-level">Lv. {{ skill.level }}</div>
+              <div v-if="skill.trueMastery" class="skill-true-mastery" title="Skill level 99 and every task mastered">
+                <Trophy :size="10" />
+                <span>True</span>
+              </div>
+            </div>
           </div>
           <div class="skill-bar">
             <div
@@ -43,6 +49,16 @@
           </div>
           <div class="skill-unlocks">
             {{ skill.unlockedTaskCount }} / {{ skill.totalTaskCount }} tasks unlocked
+          </div>
+          <div class="skill-mastery-row">
+            <span>Mastery {{ skill.masteredTaskCount }} / {{ skill.totalTaskCount }}</span>
+            <span>Avg Lv. {{ skill.averageMasteryLevel }}</span>
+          </div>
+          <div class="skill-mastery-bar" :title="`${skill.masteryPercent}% task mastery`">
+            <div
+              class="skill-mastery-fill"
+              :style="{ width: skill.masteryPercent + '%' }"
+            ></div>
           </div>
           <div class="skill-actions">
             <button
@@ -96,7 +112,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { BookOpen, Clock, Fish, FlameKindling, Hammer, MousePointerClick, Pickaxe, Sprout, Swords, TreePine } from 'lucide-vue-next'
+import { BookOpen, Clock, Fish, FlameKindling, Hammer, MousePointerClick, Pickaxe, Sprout, Swords, TreePine, Trophy } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { SKILL_LIST, type LaneType, type SkillId } from '../data/skills'
 import { getTaskById, getTasksForSkill, type TaskDefinition } from '../data/tasks'
@@ -110,6 +126,7 @@ const skillData = computed(() =>
     const unlockedTasks = tasks.filter((task) => level >= task.levelRequired)
     const currentTask = unlockedTasks[unlockedTasks.length - 1] ?? null
     const nextTask = tasks.find((task) => level < task.levelRequired) ?? null
+    const mastery = store.getSkillMasterySummary(def.id)
 
     return {
       id: def.id,
@@ -122,6 +139,10 @@ const skillData = computed(() =>
       currentTaskName: currentTask ? taskChoiceLabel(currentTask) : null,
       unlockedTaskCount: unlockedTasks.length,
       totalTaskCount: tasks.length,
+      masteredTaskCount: mastery.masteredTasks,
+      averageMasteryLevel: mastery.averageLevel,
+      masteryPercent: mastery.percent,
+      trueMastery: mastery.trueMastery,
       canUseActive: def.allowedLanes.includes('active'),
       canUseIdle: def.allowedLanes.includes('idle'),
       canUseBackground: def.allowedLanes.includes('background'),
@@ -270,9 +291,32 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   overflow-wrap: anywhere;
 }
 
+.skill-title-meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
 .skill-level {
   font-size: 11px;
   color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.skill-true-mastery {
+  min-height: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: rgba(253, 230, 138, 0.12);
+  color: #fde68a;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -313,6 +357,36 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   letter-spacing: 0.4px;
   text-transform: uppercase;
   color: var(--color-accent-light);
+}
+
+.skill-mastery-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.skill-mastery-row span:last-child {
+  color: #fde68a;
+  white-space: nowrap;
+}
+
+.skill-mastery-bar {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--color-bg-elevated);
+}
+
+.skill-mastery-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #d97706, #fde68a);
+  transition: width 0.3s ease;
 }
 
 .skill-actions {

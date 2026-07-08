@@ -13,8 +13,17 @@
 
       <!-- Skill Level + XP -->
       <div class="active-meta" v-if="task && skillDef">
-        <div class="active-skill-badge">
-          <span class="active-skill-name">{{ skillDef.name }} Lv.{{ skillLevel }}</span>
+        <div class="active-badge-row">
+          <div class="active-skill-badge">
+            <span class="active-skill-name">{{ skillDef.name }} Lv.{{ skillLevel }}</span>
+          </div>
+          <div
+            class="active-mastery-badge"
+            :class="{ 'active-mastery-badge-complete': isTaskMastered }"
+          >
+            <Trophy :size="12" />
+            <span>Mastery Lv.{{ masteryLevel }}</span>
+          </div>
         </div>
         <div class="active-xp-bar-container">
           <div class="active-xp-bar">
@@ -23,7 +32,16 @@
               :style="{ width: (skillProgress * 100) + '%' }"
             ></div>
           </div>
-          <span class="active-xp-text">{{ xpToNext.toLocaleString() }} XP to next</span>
+          <span class="active-xp-text">Skill: {{ formatNumber(xpToNext) }} XP to next</span>
+        </div>
+        <div class="active-xp-bar-container active-mastery-bar-container">
+          <div class="active-xp-bar">
+            <div
+              class="active-xp-bar-fill active-mastery-bar-fill"
+              :style="{ width: (masteryProgress * 100) + '%' }"
+            ></div>
+          </div>
+          <span class="active-xp-text">{{ masteryProgressLabel }}</span>
         </div>
       </div>
 
@@ -139,6 +157,9 @@
           </span>
           <span class="active-task-option-meta">
             <span>Lv.{{ t.levelRequired }}</span>
+            <span :class="{ 'active-task-option-mastered': store.isTaskMastered(t.id) }">
+              {{ taskMasteryLabel(t) }}
+            </span>
             <span v-if="t.id === lane.taskId">Current</span>
           </span>
         </button>
@@ -154,7 +175,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Lock, Pickaxe, Sprout, TreePine } from 'lucide-vue-next'
+import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Lock, Pickaxe, Sprout, TreePine, Trophy } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
@@ -170,6 +191,15 @@ const skillDef = computed(() => task.value ? SKILLS[task.value.skillId] : null)
 const skillLevel = computed(() => task.value ? store.getSkillLevel(task.value.skillId) : 0)
 const skillProgress = computed(() => task.value ? store.getSkillProgress(task.value.skillId) : 0)
 const xpToNext = computed(() => task.value ? store.getSkillXpToNext(task.value.skillId) : 0)
+const masteryLevel = computed(() => task.value ? store.getTaskMasteryLevel(task.value.id) : 1)
+const masteryProgress = computed(() => task.value ? store.getTaskMasteryProgress(task.value.id) : 0)
+const masteryXpToNext = computed(() => task.value ? store.getTaskMasteryXpToNext(task.value.id) : 0)
+const isTaskMastered = computed(() => task.value ? store.isTaskMastered(task.value.id) : false)
+const masteryProgressLabel = computed(() =>
+  isTaskMastered.value
+    ? 'Task mastery complete'
+    : `Mastery: ${formatNumber(masteryXpToNext.value)} XP to next`
+)
 const costReadiness = computed(() => {
   if (!task.value?.costs?.length) return []
   return getCostReadiness(task.value.costs, store.getItemCount, task.value.activeBoostMultiplier)
@@ -301,6 +331,16 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   return taskDef.name.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
 }
 
+function taskMasteryLabel(taskDef: TaskDefinition): string {
+  return store.isTaskMastered(taskDef.id)
+    ? 'Mastered'
+    : `M.${store.getTaskMasteryLevel(taskDef.id)}`
+}
+
+function formatNumber(value: number): string {
+  return Math.floor(value).toLocaleString()
+}
+
 </script>
 
 <style scoped>
@@ -415,10 +455,40 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   max-width: 380px;
 }
 
-.active-skill-badge {
+.active-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.active-skill-badge,
+.active-mastery-badge {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 600;
+}
+
+.active-skill-badge {
   color: var(--color-accent-light);
+}
+
+.active-mastery-badge {
+  border: 1px solid rgba(253, 230, 138, 0.24);
+  background: rgba(253, 230, 138, 0.08);
+  color: #fde68a;
+}
+
+.active-mastery-badge-complete {
+  border-color: rgba(253, 230, 138, 0.52);
+  background: rgba(253, 230, 138, 0.14);
 }
 
 .active-xp-bar-container {
@@ -440,6 +510,14 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
   border-radius: 3px;
   transition: width 0.3s ease;
+}
+
+.active-mastery-bar-container {
+  opacity: 0.96;
+}
+
+.active-mastery-bar-fill {
+  background: linear-gradient(90deg, #d97706, #fde68a);
 }
 
 .active-xp-text {
@@ -740,6 +818,10 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   font-size: 10px;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.active-task-option-mastered {
+  color: #fde68a;
 }
 
 .active-empty {

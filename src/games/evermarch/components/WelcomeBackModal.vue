@@ -81,6 +81,30 @@
             </div>
           </section>
 
+          <section v-if="summary.taskMastery.length > 0" class="welcome-section">
+            <h3 class="welcome-section-title">
+              <Trophy :size="14" />
+              <span>Task Mastery</span>
+            </h3>
+            <div class="welcome-grid">
+              <div
+                v-for="mastery in summary.taskMastery"
+                :key="mastery.taskId"
+                class="welcome-gain-row"
+              >
+                <Trophy :size="15" class="welcome-gain-icon" />
+                <span class="welcome-gain-name">{{ mastery.taskName }}</span>
+                <strong class="welcome-gain-amount">+{{ formatNumber(mastery.xp) }} XP</strong>
+                <span
+                  v-if="mastery.levelAfter > mastery.levelBefore"
+                  class="welcome-level-pill"
+                >
+                  Lv. {{ mastery.levelAfter }}
+                </span>
+              </div>
+            </div>
+          </section>
+
           <section v-if="summary.lanes.length > 0" class="welcome-section">
             <h3 class="welcome-section-title">
               <Zap :size="14" />
@@ -127,6 +151,7 @@ import {
   Sprout,
   Star,
   TreePine,
+  Trophy,
   Wheat,
   X,
   Zap,

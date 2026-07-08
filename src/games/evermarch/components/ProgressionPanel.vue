@@ -84,7 +84,14 @@
             </div>
           </div>
           <div class="progression-skill-detail">
-            <span>{{ skill.tasksWorked }}/{{ skill.totalTasks }} tasks</span>
+            <span>{{ skill.masteredTasks }}/{{ skill.totalTasks }} mastered</span>
+            <small>{{ skill.masteryPercent }}% - Avg M.{{ skill.averageMasteryLevel }}</small>
+          </div>
+          <div
+            class="progression-skill-detail"
+            :class="{ 'progression-skill-detail-complete': skill.trueMastery }"
+          >
+            <span>{{ skill.tasksWorked }}/{{ skill.totalTasks }} worked</span>
             <small>{{ skill.xp }} XP</small>
           </div>
         </article>
@@ -133,8 +140,8 @@
 
     <section class="progression-section">
       <div class="progression-section-heading">
-        <h3>Top Worked Tasks</h3>
-        <span>{{ progress.tasks.unworkedTaskIds.length }} untouched</span>
+        <h3>Task Mastery</h3>
+        <span>{{ progress.tasks.mastered }}/{{ progress.tasks.total }} mastered, {{ progress.tasks.unworkedTaskIds.length }} untouched</span>
       </div>
       <div v-if="taskRows.length > 0" class="progression-task-list">
         <article
@@ -146,17 +153,29 @@
             <div class="progression-row-title">{{ task.name }}</div>
             <div class="progression-row-meta">{{ task.skillName }} - {{ task.time }}</div>
           </div>
+          <div class="progression-task-mastery">
+            <div class="progression-task-mastery-top">
+              <strong>M.{{ task.masteryLevel }}</strong>
+              <span>{{ task.masteryPercent }}%</span>
+            </div>
+            <div class="progression-task-mastery-bar">
+              <div
+                class="progression-task-mastery-fill"
+                :style="{ width: task.masteryPercent + '%' }"
+              ></div>
+            </div>
+          </div>
           <div class="progression-task-detail">
             <strong>{{ task.actions }}</strong>
             <span>actions</span>
           </div>
           <div class="progression-task-detail">
-            <strong>{{ task.xp }}</strong>
-            <span>XP</span>
+            <strong>{{ task.isMastered ? 'Done' : task.masteryXpToNext }}</strong>
+            <span>{{ task.isMastered ? 'mastered' : 'XP next' }}</span>
           </div>
         </article>
       </div>
-      <div v-else class="progression-empty">No task history yet.</div>
+      <div v-else class="progression-empty">No task mastery yet.</div>
     </section>
   </div>
 </template>
@@ -227,17 +246,24 @@ const overviewMetrics = computed(() => [
   },
   {
     id: 'tasks',
-    label: 'Tasks Worked',
-    value: `${progress.value.tasks.worked}/${progress.value.tasks.total}`,
+    label: 'Task Mastery',
+    value: `${progress.value.tasks.mastered}/${progress.value.tasks.total}`,
     percent: progress.value.tasks.percent,
     icon: markRaw(ListChecks),
   },
   {
     id: 'mastery',
-    label: 'Mastery Prep',
+    label: 'True Mastery',
     value: `${progress.value.trueMastery.readySkills}/${progress.value.trueMastery.total}`,
     percent: progress.value.trueMastery.percent,
     icon: markRaw(Trophy),
+  },
+  {
+    id: 'worked',
+    label: 'Tasks Worked',
+    value: `${progress.value.tasks.worked}/${progress.value.tasks.total}`,
+    percent: progress.value.tasks.workedPercent,
+    icon: markRaw(Pickaxe),
   },
 ])
 
@@ -268,6 +294,7 @@ const skillRows = computed(() =>
     const stats = store.getSkillStats(skill.id)
     const taskCount = getTasksForSkill(skill.id).length
     const tasksWorked = getTasksForSkill(skill.id).filter((task) => store.getTaskStats(task.id).actions > 0).length
+    const mastery = store.getSkillMasterySummary(skill.id)
 
     return {
       id: skill.id,
@@ -280,6 +307,10 @@ const skillRows = computed(() =>
       time: formatDuration(stats.timeMs),
       tasksWorked,
       totalTasks: taskCount,
+      masteredTasks: mastery.masteredTasks,
+      masteryPercent: mastery.percent,
+      averageMasteryLevel: mastery.averageLevel,
+      trueMastery: mastery.trueMastery,
     }
   }),
 )
@@ -317,18 +348,29 @@ const taskRows = computed(() =>
   ALL_TASKS
     .map((task) => {
       const stats = store.getTaskStats(task.id)
+      const masteryXp = store.getTaskMasteryXp(task.id)
+      const masteryProgress = store.getTaskMasteryProgress(task.id)
       return {
         id: task.id,
         name: task.name,
         skillName: SKILLS[task.skillId].name,
         actionsRaw: stats.actions,
+        masteryXpRaw: masteryXp,
+        masteryLevelRaw: store.getTaskMasteryLevel(task.id),
         actions: formatNumber(stats.actions),
-        xp: formatNumber(stats.xp),
         time: formatDuration(stats.timeMs),
+        masteryLevel: store.getTaskMasteryLevel(task.id),
+        masteryPercent: Math.round(masteryProgress * 100),
+        masteryXpToNext: formatNumber(store.getTaskMasteryXpToNext(task.id)),
+        isMastered: store.isTaskMastered(task.id),
       }
     })
-    .filter((task) => task.actionsRaw > 0)
-    .sort((a, b) => b.actionsRaw - a.actionsRaw || a.name.localeCompare(b.name))
+    .filter((task) => task.actionsRaw > 0 || task.masteryXpRaw > 0)
+    .sort((a, b) =>
+      b.masteryXpRaw - a.masteryXpRaw
+      || b.actionsRaw - a.actionsRaw
+      || a.name.localeCompare(b.name)
+    )
     .slice(0, 12),
 )
 
@@ -407,7 +449,7 @@ function formatDuration(ms: number): string {
 
 .progression-overview {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 8px;
 }
 
@@ -570,11 +612,11 @@ function formatDuration(ms: number): string {
 }
 
 .progression-skill-row {
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
 }
 
 .progression-task-row {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(104px, 150px) auto auto;
 }
 
 .progression-skill-icon {
@@ -632,11 +674,50 @@ function formatDuration(ms: number): string {
   font-variant-numeric: tabular-nums;
 }
 
+.progression-skill-detail-complete span {
+  color: #fde68a;
+}
+
 .progression-skill-detail small,
 .progression-task-detail span {
   color: var(--color-text-muted);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+.progression-task-mastery {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progression-task-mastery-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.progression-task-mastery-top strong {
+  color: #fde68a;
+  font-size: 12px;
+}
+
+.progression-task-mastery-bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-bg-elevated);
+}
+
+.progression-task-mastery-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d97706, #fde68a);
 }
 
 .progression-columns {
@@ -694,8 +775,13 @@ function formatDuration(ms: number): string {
 }
 
 @media (max-width: 1180px) {
-  .progression-overview {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .progression-skill-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .progression-skill-detail-complete {
+    grid-column: 2 / -1;
+    align-items: flex-start;
   }
 }
 

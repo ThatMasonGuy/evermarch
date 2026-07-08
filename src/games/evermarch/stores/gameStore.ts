@@ -11,12 +11,34 @@ import { SKILL_LIST } from '../data/skills'
 import { ALL_TASKS, getDefaultTaskIdForLane, getTaskById, getTasksForSkill, normalizeTaskId } from '../data/tasks'
 import { getResourceDefinition } from '../data/resources'
 import { MAX_LEVEL, levelForXp, xpProgressFraction, xpToNextLevel } from '../data/xp'
+import {
+  TASK_MASTERY_MAX_XP,
+  clampTaskMasteryXp,
+  taskMasteryLevelForXp,
+  taskMasteryProgressFraction,
+  taskMasteryXpToNextLevel,
+} from '../data/taskMastery'
 
 // ─── Types ─────────────────────────────────────────────────────
 
 export interface SkillState {
   id: SkillId
   xp: number
+}
+
+export interface TaskMasteryState {
+  taskId: string
+  xp: number
+}
+
+export interface SkillMasterySummary {
+  skillId: SkillId
+  masteredTasks: number
+  totalTasks: number
+  percent: number
+  averageLevel: number
+  allTasksMastered: boolean
+  trueMastery: boolean
 }
 
 export interface LaneState {
@@ -135,8 +157,12 @@ export interface CompletionProgress {
   }
   tasks: {
     worked: number
+    workedPercent: number
+    mastered: number
     total: number
     percent: number
+    masteredTaskIds: string[]
+    unmasteredTaskIds: string[]
     unworkedTaskIds: string[]
   }
   trueMastery: {
@@ -155,6 +181,7 @@ export interface GameSaveData {
   lastSavedAt: number
   playtime: number
   skills: SkillState[]
+  taskMastery?: Record<string, TaskMasteryState>
   inventory: Record<string, number>
   gold: number
   lanes: {
@@ -177,7 +204,7 @@ interface TaskActionStatsInput {
   activeSavedMs?: number
 }
 
-const SAVE_VERSION = 2
+const SAVE_VERSION = 3
 const STATS_VERSION = 2
 const ACTIVE_CLICK_SESSION_GAP_MS = 2_000
 const TOAST_DURATION_MS = 3_200
@@ -200,6 +227,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
   const skills = ref<SkillState[]>(
     SKILL_LIST.map((s) => ({ id: s.id, xp: 0 }))
   )
+  const taskMastery = ref<Record<string, TaskMasteryState>>({})
 
   const inventory = ref<Record<string, number>>({})
   const gold = ref(0)
@@ -267,19 +295,27 @@ export const useGameStore = defineStore('evermarch-game', () => {
       .filter((task) => getTaskStats(task.id).actions > 0)
       .map((task) => task.id)
     const workedTaskSet = new Set(workedTaskIds)
+    const masteredTaskIds = ALL_TASKS
+      .filter((task) => getTaskMasteryLevel(task.id) >= MAX_LEVEL)
+      .map((task) => task.id)
+    const masteredTaskSet = new Set(masteredTaskIds)
+    const taskMasteryPercent = percentFromRatio(
+      ALL_TASKS.reduce((sum, task) => sum + getTaskMasteryXp(task.id), 0),
+      ALL_TASKS.length * TASK_MASTERY_MAX_XP,
+    )
     const masteryReadySkillIds = SKILL_LIST
       .filter((skill) =>
         completedSkillSet.has(skill.id)
-        && getTasksForSkill(skill.id).every((task) => workedTaskSet.has(task.id))
+        && getTasksForSkill(skill.id).every((task) => masteredTaskSet.has(task.id))
       )
       .map((skill) => skill.id)
 
     const itemPercent = percent(collectedResourceIds.length, COLLECTIBLE_RESOURCE_IDS.length)
     const skillPercent = percent(completedSkillIds.length, SKILL_LIST.length)
-    const taskPercent = percent(workedTaskIds.length, ALL_TASKS.length)
+    const taskWorkedPercent = percent(workedTaskIds.length, ALL_TASKS.length)
 
     return {
-      overallPercent: Math.round((itemPercent + skillPercent + taskPercent) / 3),
+      overallPercent: Math.round((itemPercent + skillPercent + taskMasteryPercent) / 3),
       items: {
         collected: collectedResourceIds.length,
         total: COLLECTIBLE_RESOURCE_IDS.length,
@@ -297,8 +333,14 @@ export const useGameStore = defineStore('evermarch-game', () => {
       },
       tasks: {
         worked: workedTaskIds.length,
+        workedPercent: taskWorkedPercent,
+        mastered: masteredTaskIds.length,
         total: ALL_TASKS.length,
-        percent: taskPercent,
+        percent: taskMasteryPercent,
+        masteredTaskIds,
+        unmasteredTaskIds: ALL_TASKS
+          .filter((task) => !masteredTaskSet.has(task.id))
+          .map((task) => task.id),
         unworkedTaskIds: ALL_TASKS
           .filter((task) => !workedTaskSet.has(task.id))
           .map((task) => task.id),
@@ -329,6 +371,49 @@ export const useGameStore = defineStore('evermarch-game', () => {
 
   function getSkillStats(skillId: SkillId): SkillStats {
     return stats.value.skills[skillId] ?? createSkillStats()
+  }
+
+  function getTaskMastery(taskId: string): TaskMasteryState {
+    return taskMastery.value[taskId] ?? { taskId, xp: 0 }
+  }
+
+  function getTaskMasteryXp(taskId: string): number {
+    return getTaskMastery(taskId).xp
+  }
+
+  function getTaskMasteryLevel(taskId: string): number {
+    return taskMasteryLevelForXp(getTaskMasteryXp(taskId))
+  }
+
+  function getTaskMasteryProgress(taskId: string): number {
+    return taskMasteryProgressFraction(getTaskMasteryXp(taskId))
+  }
+
+  function getTaskMasteryXpToNext(taskId: string): number {
+    return taskMasteryXpToNextLevel(getTaskMasteryXp(taskId))
+  }
+
+  function isTaskMastered(taskId: string): boolean {
+    return getTaskMasteryLevel(taskId) >= MAX_LEVEL
+  }
+
+  function getSkillMasterySummary(skillId: SkillId): SkillMasterySummary {
+    const tasks = getTasksForSkill(skillId)
+    const masteredTasks = tasks.filter((task) => isTaskMastered(task.id)).length
+    const totalLevelForTasks = tasks.reduce((sum, task) => sum + getTaskMasteryLevel(task.id), 0)
+    const totalXpForTasks = tasks.reduce((sum, task) => sum + getTaskMasteryXp(task.id), 0)
+    const totalTaskXp = tasks.length * TASK_MASTERY_MAX_XP
+    const allTasksMastered = masteredTasks === tasks.length && tasks.length > 0
+
+    return {
+      skillId,
+      masteredTasks,
+      totalTasks: tasks.length,
+      percent: percentFromRatio(totalXpForTasks, totalTaskXp),
+      averageLevel: tasks.length > 0 ? Math.floor(totalLevelForTasks / tasks.length) : 0,
+      allTasksMastered,
+      trueMastery: getSkillLevel(skillId) >= MAX_LEVEL && allTasksMastered,
+    }
   }
 
   // ── Mutations ──
@@ -372,6 +457,40 @@ export const useGameStore = defineStore('evermarch-game', () => {
       }
       logTaskUnlocks(skillId, skillName, prevLevel, newLevel)
     }
+  }
+
+  function addTaskMasteryXp(taskId: string, amount: number, options: { toast?: boolean } = {}) {
+    if (amount <= 0) return 0
+
+    const task = getTaskById(taskId)
+    if (!task) return 0
+
+    const mastery = ensureTaskMastery(taskId)
+    const prevXp = mastery.xp
+    if (prevXp >= TASK_MASTERY_MAX_XP) return 0
+
+    const prevLevel = taskMasteryLevelForXp(prevXp)
+    mastery.xp = clampTaskMasteryXp(prevXp + amount)
+    const gained = mastery.xp - prevXp
+    const newLevel = taskMasteryLevelForXp(mastery.xp)
+    const shouldToast = options.toast !== false
+
+    if (newLevel > prevLevel) {
+      const taskLabel = taskChoiceLabel(task.name)
+      addLog(`${taskLabel} mastery increased to ${newLevel}!`, 'levelup')
+      if (shouldToast) {
+        pushGainToast({
+          key: `task-mastery:${taskId}:${newLevel}`,
+          kind: 'level',
+          label: `${taskLabel} Mastery Lv. ${newLevel}`,
+          amount: null,
+          total: null,
+          icon: 'Sparkles',
+        })
+      }
+    }
+
+    return gained
   }
 
   function logTaskUnlocks(skillId: SkillId, skillName: string, previousLevel: number, newLevel: number) {
@@ -551,6 +670,11 @@ export const useGameStore = defineStore('evermarch-game', () => {
   function ensureSkillStats(skillId: SkillId): SkillStats {
     stats.value.skills[skillId] ??= createSkillStats()
     return stats.value.skills[skillId]!
+  }
+
+  function ensureTaskMastery(taskId: string): TaskMasteryState {
+    taskMastery.value[taskId] ??= { taskId, xp: 0 }
+    return taskMastery.value[taskId]!
   }
 
   function applyWorkTime(target: TaskStats | SkillStats, laneType: LaneType, source: StatActionSource, workMs: number, timestamp: number) {
@@ -754,6 +878,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
       lastSavedAt: Date.now(),
       playtime: playtime.value,
       skills: skills.value.map((s) => ({ ...s })),
+      taskMastery: cloneTaskMastery(taskMastery.value),
       inventory: { ...inventory.value },
       gold: gold.value,
       lanes: {
@@ -774,6 +899,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     gold.value = data.gold ?? 0
     inventory.value = data.inventory ?? {}
     stats.value = normalizeStats(data.stats, inventory.value, playtime.value, gold.value)
+    taskMastery.value = normalizeTaskMastery(data.taskMastery, stats.value)
     lastActiveClickAt = null
 
     // Merge skill data — preserve any new skills added after save
@@ -813,6 +939,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     gold.value = 0
     inventory.value = {}
     stats.value = createDefaultStats()
+    taskMastery.value = {}
     skills.value = SKILL_LIST.map((s) => ({ id: s.id, xp: 0 }))
     lanes.value = {
       active: { type: 'active', taskId: getDefaultTaskIdForLane('active'), progress: 0 },
@@ -834,6 +961,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     lastSavedAt,
     playtime,
     skills,
+    taskMastery,
     inventory,
     gold,
     stats,
@@ -856,6 +984,13 @@ export const useGameStore = defineStore('evermarch-game', () => {
     getItemStats,
     getTaskStats,
     getSkillStats,
+    getTaskMastery,
+    getTaskMasteryXp,
+    getTaskMasteryLevel,
+    getTaskMasteryProgress,
+    getTaskMasteryXpToNext,
+    isTaskMastered,
+    getSkillMasterySummary,
     // Mutations
     recordOnlineTime,
     recordLaneWork,
@@ -863,6 +998,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     recordItemConsumed,
     recordOfflinePeriod,
     addXp,
+    addTaskMasteryXp,
     addItem,
     removeItem,
     addGold,
@@ -1089,6 +1225,35 @@ function cloneStats(stats: GameStats): GameStats {
   }
 }
 
+function normalizeTaskMastery(
+  saved: Record<string, TaskMasteryState> | undefined,
+  stats: GameStats,
+): Record<string, TaskMasteryState> {
+  const normalized: Record<string, TaskMasteryState> = {}
+
+  for (const task of ALL_TASKS) {
+    const savedXp = saved?.[task.id]?.xp
+    const seededXp = savedXp ?? stats.tasks[task.id]?.xp ?? 0
+    const xp = clampTaskMasteryXp(seededXp)
+    if (xp > 0) {
+      normalized[task.id] = { taskId: task.id, xp }
+    }
+  }
+
+  return normalized
+}
+
+function cloneTaskMastery(taskMastery: Record<string, TaskMasteryState>): Record<string, TaskMasteryState> {
+  return Object.fromEntries(
+    Object.entries(taskMastery)
+      .filter(([, mastery]) => mastery.xp > 0)
+      .map(([taskId, mastery]) => [taskId, {
+        taskId,
+        xp: clampTaskMasteryXp(mastery.xp),
+      }]),
+  )
+}
+
 function pickNumericItemStats(item: ItemStats): Omit<ItemStats, 'firstAcquiredAt' | 'lastAcquiredAt'> {
   return {
     acquired: nonNegative(item?.acquired),
@@ -1127,6 +1292,11 @@ function nonNegative(value: number | undefined): number {
 }
 
 function percent(value: number, total: number): number {
+  if (total <= 0) return 100
+  return Math.min(100, Math.max(0, Math.round((value / total) * 100)))
+}
+
+function percentFromRatio(value: number, total: number): number {
   if (total <= 0) return 100
   return Math.min(100, Math.max(0, Math.round((value / total) * 100)))
 }

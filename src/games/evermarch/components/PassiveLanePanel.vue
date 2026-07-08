@@ -27,6 +27,13 @@
           <div class="passive-task-name">{{ task.name }}</div>
           <div class="passive-xp-row">
             <span>+{{ task.xpPerAction }} XP / action</span>
+            <span
+              class="passive-mastery-chip"
+              :class="{ 'passive-mastery-chip-complete': isTaskMastered }"
+            >
+              <Trophy :size="10" />
+              Mastery Lv.{{ masteryLevel }}
+            </span>
           </div>
           <div
             class="passive-cost-row"
@@ -54,6 +61,13 @@
         <div
           class="passive-xp-fill"
           :style="{ width: (skillProgress * 100) + '%' }"
+        ></div>
+      </div>
+
+      <div class="passive-mastery-bar" :title="masteryProgressLabel">
+        <div
+          class="passive-mastery-fill"
+          :style="{ width: (masteryProgress * 100) + '%' }"
         ></div>
       </div>
     </div>
@@ -115,6 +129,9 @@
           <span class="passive-task-option-name">{{ taskChoiceLabel(t) }}</span>
           <span class="passive-task-option-meta">
             <span>Lv.{{ t.levelRequired }}</span>
+            <span :class="{ 'passive-task-option-mastered': store.isTaskMastered(t.id) }">
+              {{ taskMasteryLabel(t) }}
+            </span>
             <Lock v-if="!canUseTask(t)" :size="11" />
             <span v-else-if="t.id === lane.taskId">Current</span>
           </span>
@@ -130,7 +147,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowUpRight, BookOpen, Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer, Lock } from 'lucide-vue-next'
+import { ArrowUpRight, BookOpen, Pickaxe, TreePine, Fish, Sprout, FlameKindling, Hammer, Lock, Trophy } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { getTaskById, ALL_TASKS, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
@@ -149,6 +166,15 @@ const task = computed(() => lane.value.taskId ? getTaskById(lane.value.taskId) :
 const skillDef = computed(() => task.value ? SKILLS[task.value.skillId] : null)
 const skillLevel = computed(() => task.value ? store.getSkillLevel(task.value.skillId) : 0)
 const skillProgress = computed(() => task.value ? store.getSkillProgress(task.value.skillId) : 0)
+const masteryLevel = computed(() => task.value ? store.getTaskMasteryLevel(task.value.id) : 1)
+const masteryProgress = computed(() => task.value ? store.getTaskMasteryProgress(task.value.id) : 0)
+const masteryXpToNext = computed(() => task.value ? store.getTaskMasteryXpToNext(task.value.id) : 0)
+const isTaskMastered = computed(() => task.value ? store.isTaskMastered(task.value.id) : false)
+const masteryProgressLabel = computed(() =>
+  isTaskMastered.value
+    ? 'Task mastery complete'
+    : `${formatNumber(masteryXpToNext.value)} XP to next task mastery level`
+)
 const costReadiness = computed(() => {
   if (!task.value?.costs?.length) return []
   return getCostReadiness(task.value.costs, store.getItemCount)
@@ -254,6 +280,16 @@ function taskSelectorLabel(skillId: SkillId): string {
 
 function taskChoiceLabel(taskDef: TaskDefinition): string {
   return taskDef.name.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
+}
+
+function taskMasteryLabel(taskDef: TaskDefinition): string {
+  return store.isTaskMastered(taskDef.id)
+    ? 'Mastered'
+    : `M.${store.getTaskMasteryLevel(taskDef.id)}`
+}
+
+function formatNumber(value: number): string {
+  return Math.floor(value).toLocaleString()
 }
 
 </script>
@@ -370,8 +406,29 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .passive-xp-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
   font-size: 11px;
   color: var(--color-text-muted);
+}
+
+.passive-mastery-chip {
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: rgba(253, 230, 138, 0.08);
+  color: #fde68a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.passive-mastery-chip-complete {
+  background: rgba(253, 230, 138, 0.14);
 }
 
 .passive-cost-row {
@@ -422,6 +479,20 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 .passive-xp-fill {
   height: 100%;
   background: var(--color-accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.passive-mastery-bar {
+  height: 3px;
+  background: var(--color-bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.passive-mastery-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #d97706, #fde68a);
   border-radius: 2px;
   transition: width 0.3s ease;
 }
@@ -591,6 +662,10 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   font-size: 10px;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
+}
+
+.passive-task-option-mastered {
+  color: #fde68a;
 }
 
 .passive-empty {

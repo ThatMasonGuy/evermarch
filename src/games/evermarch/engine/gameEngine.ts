@@ -27,6 +27,7 @@ type ActionSource = 'active' | PassiveLaneType | 'offline'
 
 interface ActionResult {
   xp: number
+  masteryXp: number
   drops: ResourceDrop[]
 }
 
@@ -42,6 +43,14 @@ export interface OfflineSkillGain {
   skillId: SkillId
   name: string
   icon: string
+  xp: number
+  levelBefore: number
+  levelAfter: number
+}
+
+export interface OfflineTaskMasteryGain {
+  taskId: string
+  taskName: string
   xp: number
   levelBefore: number
   levelAfter: number
@@ -64,6 +73,7 @@ export interface OfflineProgressSummary {
   totalXp: number
   resources: OfflineResourceGain[]
   skills: OfflineSkillGain[]
+  taskMastery: OfflineTaskMasteryGain[]
   lanes: OfflineLaneGain[]
 }
 
@@ -174,6 +184,7 @@ function completeAction(
 
   const xp = task.xpPerAction * multiplier
   store.addXp(task.skillId, xp, { toast: !silent })
+  const masteryXp = store.addTaskMasteryXp(task.id, xp, { toast: !silent })
   const laneType = statsLaneType ?? (source === 'offline' ? 'idle' : source)
   store.recordTaskAction({
     taskId: task.id,
@@ -201,7 +212,7 @@ function completeAction(
     }
   }
 
-  return { xp, drops: gainedDrops }
+  return { xp, masteryXp, drops: gainedDrops }
 }
 
 function canPayCosts(
@@ -276,6 +287,7 @@ export function processOfflineProgress(lastSavedAt: number): OfflineProgressSumm
     totalXp: 0,
     resources: [],
     skills: [],
+    taskMastery: [],
     lanes: [],
   }
 
@@ -335,6 +347,7 @@ function processLaneOffline(
   // Replay every completed action so future random drops resolve the same way offline.
   for (let index = 0; index < actionCount; index++) {
     const levelBefore = store.getSkillLevel(task.skillId)
+    const masteryLevelBefore = store.getTaskMasteryLevel(task.id)
     const result = completeAction(task, store, 'offline', true, 1, laneType)
     if (!result) {
       lane.progress = 0
@@ -343,10 +356,12 @@ function processLaneOffline(
     }
 
     const levelAfter = store.getSkillLevel(task.skillId)
+    const masteryLevelAfter = store.getTaskMasteryLevel(task.id)
     summary.totalXp += result.xp
     laneSummary.actions++
     laneSummary.xp += result.xp
     addOfflineSkillGain(summary, task.skillId, result.xp, levelBefore, levelAfter)
+    addOfflineTaskMasteryGain(summary, task, result.masteryXp, masteryLevelBefore, masteryLevelAfter)
 
     for (const drop of result.drops) {
       addOfflineResourceGain(summary, drop.resourceId, drop.amount, store.getItemCount(drop.resourceId))
@@ -400,6 +415,31 @@ function addOfflineSkillGain(
   entry.levelAfter = Math.max(entry.levelAfter, levelAfter)
 }
 
+function addOfflineTaskMasteryGain(
+  summary: OfflineProgressSummary,
+  task: TaskDefinition,
+  xp: number,
+  levelBefore: number,
+  levelAfter: number
+) {
+  if (xp <= 0 && levelAfter <= levelBefore) return
+
+  let entry = summary.taskMastery.find((gain) => gain.taskId === task.id)
+  if (!entry) {
+    entry = {
+      taskId: task.id,
+      taskName: task.name,
+      xp: 0,
+      levelBefore,
+      levelAfter,
+    }
+    summary.taskMastery.push(entry)
+  }
+
+  entry.xp += xp
+  entry.levelAfter = Math.max(entry.levelAfter, levelAfter)
+}
+
 function addOfflineResourceGain(
   summary: OfflineProgressSummary,
   resourceId: string,
@@ -424,7 +464,9 @@ function addOfflineResourceGain(
 }
 
 function hasOfflineGains(summary: OfflineProgressSummary): boolean {
-  return summary.totalXp > 0 || summary.resources.some((resource) => resource.amount > 0)
+  return summary.totalXp > 0
+    || summary.resources.some((resource) => resource.amount > 0)
+    || summary.taskMastery.some((mastery) => mastery.xp > 0 || mastery.levelAfter > mastery.levelBefore)
 }
 
 function formatDuration(ms: number): string {

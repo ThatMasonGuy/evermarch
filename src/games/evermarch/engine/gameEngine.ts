@@ -17,10 +17,18 @@ import { SKILLS, type LaneType, type SkillId } from '../data/skills'
 const TICK_INTERVAL = 100 // ms — game ticks 10 times per second
 const AUTO_SAVE_INTERVAL = 30_000 // auto-save every 30 seconds
 const MAX_OFFLINE_MS = 24 * 60 * 60 * 1000
+export const ACTIVE_TARGET_CLICK_INTERVAL_MS = 1000
+export const ACTIVE_MAX_CLICK_INTERVAL_MS = 2000
+export const MAX_ACTIVE_SPEED_MULTIPLIER = 3
+
+const MIN_ACTIVE_CLICK_INTERVAL_MS = 50
 
 let tickHandle: ReturnType<typeof setInterval> | null = null
 let lastTickTime = 0
 let lastAutoSave = 0
+let lastActiveClickAt: number | null = null
+let lastActiveTaskId: string | null = null
+let activeSavedProgressMs = 0
 
 export type PassiveLaneType = Extract<LaneType, 'idle' | 'background'>
 type ActionSource = 'active' | PassiveLaneType | 'offline'
@@ -171,7 +179,9 @@ function completeAction(
   source: ActionSource,
   silent = false,
   multiplier = 1,
-  statsLaneType?: LaneType
+  statsLaneType?: LaneType,
+  activeSavedMs = source === 'active' ? task.baseInterval * multiplier : 0,
+  activeClicks = source === 'active' ? 1 : 0
 ): ActionResult | null {
   if (!canPayCosts(task, store, multiplier)) {
     if (!silent) {
@@ -192,8 +202,8 @@ function completeAction(
     source,
     laneType,
     xp,
-    activeClicks: source === 'active' ? 1 : 0,
-    activeSavedMs: source === 'active' ? task.baseInterval * multiplier : 0,
+    activeClicks,
+    activeSavedMs,
   })
   const gainedDrops = task.drops.map((drop) => ({
     resourceId: drop.resourceId,
@@ -251,7 +261,7 @@ function missingCostPrefix(source: ActionSource): string {
 
 /**
  * Called when the player clicks the active action button.
- * Each click completes one full action cycle instantly (the "boost").
+ * Clicks build active-lane progress from real cadence, capped at 3x routine pace.
  */
 export function performActiveAction() {
   const store = useGameStore()
@@ -264,7 +274,91 @@ export function performActiveAction() {
   const skillLevel = store.getSkillLevel(task.skillId)
   if (skillLevel < task.levelRequired) return
 
-  completeAction(task, store, 'active', false, task.activeBoostMultiplier)
+  const cadence = getActiveClickCadence(task.id, Date.now())
+  store.recordActiveCadence({
+    multiplier: cadence.multiplier,
+    ratio: cadence.multiplier / MAX_ACTIVE_SPEED_MULTIPLIER,
+    progressMs: cadence.progressMs,
+    clickGapMs: cadence.clickGapMs,
+  })
+  store.recordActiveClick(task.id, task.skillId, cadence.activeWorkMs)
+
+  if (cadence.progressMs <= 0) return
+
+  if (!canPayCosts(task, store, 1)) {
+    store.addLog(`Need ${formatCosts(task.costs ?? [], 1)} for ${task.name}`, 'system')
+    return
+  }
+
+  lane.progress += cadence.progressMs
+  activeSavedProgressMs += cadence.savedMs
+
+  while (lane.progress >= task.baseInterval) {
+    const savedForAction = consumeActiveSavedProgress(lane.progress, task.baseInterval)
+    lane.progress -= task.baseInterval
+    const result = completeAction(task, store, 'active', false, 1, 'active', savedForAction, 0)
+    if (!result) {
+      lane.progress = 0
+      activeSavedProgressMs = 0
+      break
+    }
+  }
+}
+
+function getActiveClickCadence(taskId: string, timestamp: number) {
+  if (lastActiveTaskId !== taskId) {
+    lastActiveTaskId = taskId
+    lastActiveClickAt = null
+    activeSavedProgressMs = 0
+  }
+
+  const previousClickAt = lastActiveClickAt
+  lastActiveClickAt = timestamp
+
+  if (previousClickAt === null) {
+    return {
+      clickGapMs: null,
+      activeWorkMs: 0,
+      progressMs: 0,
+      savedMs: 0,
+      multiplier: 0,
+    }
+  }
+
+  const clickGapMs = Math.max(MIN_ACTIVE_CLICK_INTERVAL_MS, timestamp - previousClickAt)
+  if (clickGapMs > ACTIVE_MAX_CLICK_INTERVAL_MS) {
+    activeSavedProgressMs = 0
+    return {
+      clickGapMs,
+      activeWorkMs: 0,
+      progressMs: 0,
+      savedMs: 0,
+      multiplier: 0,
+    }
+  }
+
+  const multiplier = Math.min(
+    MAX_ACTIVE_SPEED_MULTIPLIER,
+    (MAX_ACTIVE_SPEED_MULTIPLIER * ACTIVE_TARGET_CLICK_INTERVAL_MS) / clickGapMs,
+  )
+  const progressMs = clickGapMs * multiplier
+
+  return {
+    clickGapMs,
+    activeWorkMs: clickGapMs,
+    progressMs,
+    savedMs: Math.max(0, progressMs - clickGapMs),
+    multiplier,
+  }
+}
+
+function consumeActiveSavedProgress(currentProgressMs: number, actionProgressMs: number): number {
+  if (activeSavedProgressMs <= 0 || currentProgressMs <= 0) return 0
+
+  const savedRatio = Math.min(1, activeSavedProgressMs / currentProgressMs)
+  const savedForAction = Math.min(activeSavedProgressMs, actionProgressMs * savedRatio)
+  activeSavedProgressMs = Math.max(0, activeSavedProgressMs - savedForAction)
+  return savedForAction
 }
 
 /**

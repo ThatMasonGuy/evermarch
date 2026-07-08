@@ -34,26 +34,17 @@
           </div>
           <span class="active-xp-text">Skill: {{ formatNumber(xpToNext) }} XP to next</span>
         </div>
-        <div class="active-xp-bar-container active-mastery-bar-container">
-          <div class="active-xp-bar">
-            <div
-              class="active-xp-bar-fill active-mastery-bar-fill"
-              :style="{ width: (masteryProgress * 100) + '%' }"
-            ></div>
-          </div>
-          <span class="active-xp-text">{{ masteryProgressLabel }}</span>
-        </div>
       </div>
 
       <!-- Rates Display -->
       <div class="active-rates" v-if="task">
         <div class="active-rate">
-          <span class="active-rate-label">Idle Rate:</span>
+          <span class="active-rate-label">Routine Rate:</span>
           <span class="active-rate-value">+{{ task.drops[0]?.amount ?? 1 }} / {{ (task.baseInterval / 1000).toFixed(0) }}s</span>
         </div>
         <div class="active-rate active-rate-boosted">
-          <span class="active-rate-label">Active Rate:</span>
-          <span class="active-rate-value">+{{ (task.drops[0]?.amount ?? 1) * task.activeBoostMultiplier }} / click</span>
+          <span class="active-rate-label">Active Pace:</span>
+          <span class="active-rate-value">{{ activePaceLabel }} / {{ maxActiveMultiplier }}x</span>
         </div>
         <div
           class="active-rate active-rate-cost"
@@ -61,10 +52,23 @@
           v-if="costLabel"
         >
           <span class="active-rate-label">Requires:</span>
-          <span class="active-rate-value">{{ costLabel }} / click</span>
+          <span class="active-rate-value">{{ costLabel }} / action</span>
         </div>
-        <div class="active-boost">
-          Active boost: <strong>{{ task.activeBoostMultiplier }}x!</strong>
+        <div class="active-pace" :title="activePaceTitle">
+          <div class="active-pace-top">
+            <span>Active rhythm</span>
+            <strong>{{ activePacePercent }}%</strong>
+          </div>
+          <div class="active-pace-bar">
+            <div
+              class="active-pace-fill"
+              :style="{ width: activePacePercent + '%' }"
+            ></div>
+          </div>
+          <div class="active-pace-foot">
+            <span>{{ activeProgressLabel }}</span>
+            <span>{{ activeTargetLabel }}</span>
+          </div>
         </div>
       </div>
 
@@ -179,7 +183,12 @@ import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Lock, Pickaxe, Spr
 import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
-import { performActiveAction } from '../engine/gameEngine'
+import {
+  ACTIVE_MAX_CLICK_INTERVAL_MS,
+  ACTIVE_TARGET_CLICK_INTERVAL_MS,
+  MAX_ACTIVE_SPEED_MULTIPLIER,
+  performActiveAction,
+} from '../engine/gameEngine'
 import { formatCostReadiness, getCostReadiness, hasMissingCosts } from '../utils/taskCosts'
 
 const store = useGameStore()
@@ -192,17 +201,10 @@ const skillLevel = computed(() => task.value ? store.getSkillLevel(task.value.sk
 const skillProgress = computed(() => task.value ? store.getSkillProgress(task.value.skillId) : 0)
 const xpToNext = computed(() => task.value ? store.getSkillXpToNext(task.value.skillId) : 0)
 const masteryLevel = computed(() => task.value ? store.getTaskMasteryLevel(task.value.id) : 1)
-const masteryProgress = computed(() => task.value ? store.getTaskMasteryProgress(task.value.id) : 0)
-const masteryXpToNext = computed(() => task.value ? store.getTaskMasteryXpToNext(task.value.id) : 0)
 const isTaskMastered = computed(() => task.value ? store.isTaskMastered(task.value.id) : false)
-const masteryProgressLabel = computed(() =>
-  isTaskMastered.value
-    ? 'Task mastery complete'
-    : `Mastery: ${formatNumber(masteryXpToNext.value)} XP to next`
-)
 const costReadiness = computed(() => {
   if (!task.value?.costs?.length) return []
-  return getCostReadiness(task.value.costs, store.getItemCount, task.value.activeBoostMultiplier)
+  return getCostReadiness(task.value.costs, store.getItemCount)
 })
 const costLabel = computed(() => formatCostReadiness(costReadiness.value))
 const hasCostBlockers = computed(() => hasMissingCosts(costReadiness.value))
@@ -213,6 +215,17 @@ const actionButtonTitle = computed(() => {
   if (!hasCostBlockers.value) return ''
   return `Need ${missingCostLabel.value}`
 })
+const maxActiveMultiplier = MAX_ACTIVE_SPEED_MULTIPLIER
+const activePacePercent = computed(() => Math.round(store.activeCadence.ratio * 100))
+const activePaceLabel = computed(() => `${store.activeCadence.multiplier.toFixed(1)}x`)
+const activeProgressLabel = computed(() => {
+  if (!task.value) return 'Action 0%'
+  return `Action ${Math.floor(Math.min(100, (lane.value.progress / task.value.baseInterval) * 100))}%`
+})
+const activeTargetLabel = computed(() => `Max at ${formatSeconds(ACTIVE_TARGET_CLICK_INTERVAL_MS)}/click`)
+const activePaceTitle = computed(() =>
+  `Active pace resets after ${formatSeconds(ACTIVE_MAX_CLICK_INTERVAL_MS)} between clicks.`
+)
 
 const selectableTasks = computed(() => {
   return ALL_TASKS.filter((t) => t.allowedLanes.includes('active'))
@@ -339,6 +352,10 @@ function taskMasteryLabel(taskDef: TaskDefinition): string {
 
 function formatNumber(value: number): string {
   return Math.floor(value).toLocaleString()
+}
+
+function formatSeconds(ms: number): string {
+  return `${(ms / 1000).toFixed(ms % 1000 === 0 ? 0 : 1)}s`
 }
 
 </script>
@@ -512,14 +529,6 @@ function formatNumber(value: number): string {
   transition: width 0.3s ease;
 }
 
-.active-mastery-bar-container {
-  opacity: 0.96;
-}
-
-.active-mastery-bar-fill {
-  background: linear-gradient(90deg, #d97706, #fde68a);
-}
-
 .active-xp-text {
   font-size: 11px;
   color: var(--color-text-muted);
@@ -561,14 +570,50 @@ function formatNumber(value: number): string {
   color: #fca5a5;
 }
 
-.active-boost {
-  font-size: 13px;
-  color: var(--color-accent-light);
-  margin-top: 2px;
+.active-pace {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 2px;
 }
-.active-boost strong {
-  font-size: 17px;
-  font-family: var(--font-display);
+
+.active-pace-top,
+.active-pace-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.active-pace-top {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.active-pace-top strong {
+  color: var(--color-accent-light);
+  font-size: 12px;
+}
+
+.active-pace-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-bg-elevated);
+  overflow: hidden;
+}
+
+.active-pace-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fbbf24, var(--color-accent));
+  transition: width 0.16s ease;
+}
+
+.active-pace-foot {
+  color: var(--color-text-muted);
+  font-size: 11px;
 }
 
 /* Action Button */

@@ -63,13 +63,6 @@
           :style="{ width: (skillProgress * 100) + '%' }"
         ></div>
       </div>
-
-      <div class="passive-mastery-bar" :title="masteryProgressLabel">
-        <div
-          class="passive-mastery-fill"
-          :style="{ width: (masteryProgress * 100) + '%' }"
-        ></div>
-      </div>
     </div>
 
     <div class="passive-selector" v-if="selectableSkills.length > 0">
@@ -167,14 +160,7 @@ const skillDef = computed(() => task.value ? SKILLS[task.value.skillId] : null)
 const skillLevel = computed(() => task.value ? store.getSkillLevel(task.value.skillId) : 0)
 const skillProgress = computed(() => task.value ? store.getSkillProgress(task.value.skillId) : 0)
 const masteryLevel = computed(() => task.value ? store.getTaskMasteryLevel(task.value.id) : 1)
-const masteryProgress = computed(() => task.value ? store.getTaskMasteryProgress(task.value.id) : 0)
-const masteryXpToNext = computed(() => task.value ? store.getTaskMasteryXpToNext(task.value.id) : 0)
 const isTaskMastered = computed(() => task.value ? store.isTaskMastered(task.value.id) : false)
-const masteryProgressLabel = computed(() =>
-  isTaskMastered.value
-    ? 'Task mastery complete'
-    : `${formatNumber(masteryXpToNext.value)} XP to next task mastery level`
-)
 const costReadiness = computed(() => {
   if (!task.value?.costs?.length) return []
   return getCostReadiness(task.value.costs, store.getItemCount)
@@ -286,10 +272,6 @@ function taskMasteryLabel(taskDef: TaskDefinition): string {
   return store.isTaskMastered(taskDef.id)
     ? 'Mastered'
     : `M.${store.getTaskMasteryLevel(taskDef.id)}`
-}
-
-function formatNumber(value: number): string {
-  return Math.floor(value).toLocaleString()
 }
 
 </script>
@@ -479,20 +461,6 @@ function formatNumber(value: number): string {
 .passive-xp-fill {
   height: 100%;
   background: var(--color-accent);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.passive-mastery-bar {
-  height: 3px;
-  background: var(--color-bg-elevated);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.passive-mastery-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #d97706, #fde68a);
   border-radius: 2px;
   transition: width 0.3s ease;
 }

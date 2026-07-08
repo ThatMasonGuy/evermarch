@@ -273,7 +273,7 @@ const timeStats = computed(() => [
   {
     label: 'Active Work',
     value: `${formatDuration(account.value.activeWorkMs)} (${formatNumber(account.value.activeClickCount)} clicks)`,
-    tooltip: `Based on ${formatNumber(account.value.activeClickCount)} active clicks, active play saved about ${formatDuration(account.value.activeSavedMs)} of routine play time.`,
+    tooltip: `Based on ${formatNumber(account.value.activeClickCount)} active clicks, active play saved about ${formatDuration(account.value.activeSavedMs)} beyond routine pace.`,
   },
   { label: 'Routine Work', value: formatDuration(account.value.idleWorkMs) },
   { label: 'Background Work', value: formatDuration(account.value.backgroundWorkMs) },

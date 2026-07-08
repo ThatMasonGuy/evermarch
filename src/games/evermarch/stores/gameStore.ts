@@ -71,6 +71,14 @@ export interface GainToast {
   updatedAt: number
 }
 
+export interface ActiveCadenceState {
+  multiplier: number
+  ratio: number
+  progressMs: number
+  clickGapMs: number | null
+  lastClickAt: number | null
+}
+
 export interface ItemStats {
   acquired: number
   acquisitionEvents: number
@@ -205,8 +213,9 @@ interface TaskActionStatsInput {
 }
 
 const SAVE_VERSION = 3
-const STATS_VERSION = 2
+const STATS_VERSION = 3
 const ACTIVE_CLICK_SESSION_GAP_MS = 2_000
+const ACTIVE_SAVED_TIME_CAP_MULTIPLIER = 2
 const TOAST_DURATION_MS = 3_200
 const TOAST_MERGE_WINDOW_MS = 1_200
 const MAX_GAIN_TOASTS = 6
@@ -242,6 +251,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
   const activityLog = ref<LogEntry[]>([])
   let logCounter = 0
   const gainToasts = ref<GainToast[]>([])
+  const activeCadence = ref<ActiveCadenceState>(createActiveCadenceState())
   let toastCounter = 0
   const toastTimers = new Map<number, ReturnType<typeof setTimeout>>()
 
@@ -618,8 +628,42 @@ export const useGameStore = defineStore('evermarch-game', () => {
 
     if (activeClicks > 0) {
       stats.value.account.activeClickCount += activeClicks
+    }
+
+    if (activeSavedMs > 0) {
       stats.value.account.activeSavedMs += activeSavedMs
     }
+  }
+
+  function recordActiveClick(taskId: string, skillId: SkillId, activeWorkMs: number) {
+    const taskStats = ensureTaskStats(taskId)
+    const skillStats = ensureSkillStats(skillId)
+    const now = Date.now()
+    const safeActiveWorkMs = Math.max(0, activeWorkMs)
+
+    applyActiveClickStats(taskStats, now)
+    applyActiveClickStats(skillStats, now)
+    stats.value.account.activeClickCount++
+
+    if (safeActiveWorkMs > 0) {
+      applyWorkTime(taskStats, 'active', 'active', safeActiveWorkMs, now)
+      applyWorkTime(skillStats, 'active', 'active', safeActiveWorkMs, now)
+      applyAccountWorkTime('active', safeActiveWorkMs)
+    }
+  }
+
+  function recordActiveCadence(input: Omit<ActiveCadenceState, 'lastClickAt'>) {
+    activeCadence.value = {
+      multiplier: Math.max(0, input.multiplier),
+      ratio: Math.max(0, Math.min(1, input.ratio)),
+      progressMs: Math.max(0, input.progressMs),
+      clickGapMs: input.clickGapMs,
+      lastClickAt: Date.now(),
+    }
+  }
+
+  function resetActiveCadence() {
+    activeCadence.value = createActiveCadenceState()
   }
 
   function recordItemConsumed(resourceId: string, amount: number) {
@@ -738,6 +782,14 @@ export const useGameStore = defineStore('evermarch-game', () => {
     }
   }
 
+  function applyActiveClickStats(target: TaskStats | SkillStats, timestamp: number) {
+    target.activeClicks++
+    target.lastWorkedAt = timestamp
+    if (target.firstWorkedAt === null) {
+      target.firstWorkedAt = timestamp
+    }
+  }
+
   function applyAccountWorkTime(laneType: LaneType, workMs: number) {
     if (laneType === 'active') {
       stats.value.account.activeWorkMs += workMs
@@ -752,6 +804,10 @@ export const useGameStore = defineStore('evermarch-game', () => {
     const lane = lanes.value[laneType]
     lane.taskId = normalizeTaskId(taskId, laneType)
     lane.progress = 0
+    if (laneType === 'active') {
+      lastActiveClickAt = null
+      resetActiveCadence()
+    }
 
     const task = getTaskById(lane.taskId)
     addLog(`Started ${task?.name ?? lane.taskId} (${laneType})`, 'system')
@@ -901,6 +957,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     stats.value = normalizeStats(data.stats, inventory.value, playtime.value, gold.value)
     taskMastery.value = normalizeTaskMastery(data.taskMastery, stats.value)
     lastActiveClickAt = null
+    resetActiveCadence()
 
     // Merge skill data — preserve any new skills added after save
     for (const saved of data.skills ?? []) {
@@ -951,6 +1008,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     logCounter = 0
     toastCounter = 0
     lastActiveClickAt = null
+    resetActiveCadence()
     gameLoaded.value = true
   }
 
@@ -968,6 +1026,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     lanes,
     activityLog,
     gainToasts,
+    activeCadence,
     gameLoaded,
     // Computed
     totalLevel,
@@ -995,6 +1054,8 @@ export const useGameStore = defineStore('evermarch-game', () => {
     recordOnlineTime,
     recordLaneWork,
     recordTaskAction,
+    recordActiveClick,
+    recordActiveCadence,
     recordItemConsumed,
     recordOfflinePeriod,
     addXp,
@@ -1006,6 +1067,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     setLaneTask,
     addLog,
     dismissGainToast,
+    resetActiveCadence,
     // Save
     serialize,
     deserialize,
@@ -1025,6 +1087,16 @@ function createDefaultStats(): GameStats {
     tasks: {},
     skills: skillStats,
     account: createAccountStats(),
+  }
+}
+
+function createActiveCadenceState(): ActiveCadenceState {
+  return {
+    multiplier: 0,
+    ratio: 0,
+    progressMs: 0,
+    clickGapMs: null,
+    lastClickAt: null,
   }
 }
 
@@ -1168,6 +1240,12 @@ function normalizeTaskStats(saved: TaskStats | SkillStats | undefined, savedStat
     numeric.activeSavedMs = Math.max(numeric.activeSavedMs, numeric.activeWorkMs)
     numeric.activeWorkMs = 0
   }
+  if (savedStatsVersion < 3) {
+    numeric.activeSavedMs = Math.min(
+      numeric.activeSavedMs,
+      numeric.activeWorkMs * ACTIVE_SAVED_TIME_CAP_MULTIPLIER,
+    )
+  }
 
   return {
     ...createTaskStats(),
@@ -1196,6 +1274,12 @@ function normalizeAccountStats(saved: AccountStats | undefined, savedStatsVersio
   if (savedStatsVersion < 2) {
     normalized.activeSavedMs = Math.max(normalized.activeSavedMs, normalized.activeWorkMs)
     normalized.activeWorkMs = 0
+  }
+  if (savedStatsVersion < 3) {
+    normalized.activeSavedMs = Math.min(
+      normalized.activeSavedMs,
+      normalized.activeWorkMs * ACTIVE_SAVED_TIME_CAP_MULTIPLIER,
+    )
   }
 
   return normalized

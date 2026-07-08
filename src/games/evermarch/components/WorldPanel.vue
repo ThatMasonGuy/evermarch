@@ -144,6 +144,7 @@ import { ALL_TASKS, getTaskById, getTasksForSkill, type ResourceDrop, type TaskD
 import { SKILLS, SKILL_LIST, type LaneType, type SkillId } from '../data/skills'
 import { getResourceDefinition, getResourceName } from '../data/resources'
 import { xpForLevel } from '../data/xp'
+import { MAX_ACTIVE_SPEED_MULTIPLIER } from '../engine/gameEngine'
 import { formatCostReadiness, getCostReadiness, hasMissingCosts } from '../utils/taskCosts'
 
 const store = useGameStore()
@@ -182,8 +183,7 @@ const laneSummaries = computed(() =>
   LANE_CONFIG.map((config) => {
     const lane = store.lanes[config.id]
     const task = lane.taskId ? getTaskById(lane.taskId) : undefined
-    const multiplier = task && config.id === 'active' ? task.activeBoostMultiplier : 1
-    const costs = task ? getCostReadiness(task.costs, store.getItemCount, multiplier) : []
+    const costs = task ? getCostReadiness(task.costs, store.getItemCount) : []
     const skillDef = task ? SKILLS[task.skillId] : null
     const progressPct = task && config.id !== 'active'
       ? Math.min(100, Math.floor((lane.progress / task.baseInterval) * 100))
@@ -197,7 +197,7 @@ const laneSummaries = computed(() =>
       skillName: skillDef?.name ?? 'None',
       skillLevel: task ? store.getSkillLevel(task.skillId) : 0,
       cadenceLabel: task ? cadenceLabel(config.id, task) : 'Idle',
-      outputLabel: task ? formatDrops(task.drops, multiplier) : 'No output',
+      outputLabel: task ? formatDrops(task.drops) : 'No output',
       costLabel: formatCostReadiness(costs),
       hasCostBlockers: hasMissingCosts(costs),
       progressPct,
@@ -261,7 +261,7 @@ function iconComponent(name: string): Component {
 }
 
 function cadenceLabel(laneType: LaneType, task: TaskDefinition): string {
-  if (laneType === 'active') return 'Per click'
+  if (laneType === 'active') return `Up to ${MAX_ACTIVE_SPEED_MULTIPLIER}x pace`
   return `${(task.baseInterval / 1000).toFixed(1)}s cycle`
 }
 

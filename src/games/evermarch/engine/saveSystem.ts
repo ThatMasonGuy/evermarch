@@ -10,6 +10,7 @@
 import { useGameStore, type GameSaveData } from '../stores/gameStore'
 import { firestore } from '@/platform/services/firebase'
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { syncGlobalStatsContribution } from './globalStats'
 
 const LOCAL_SAVE_KEY = 'evermarch_save'
 
@@ -75,6 +76,7 @@ export async function pushToCloud(uid: string): Promise<boolean> {
       gold: data.gold,
       version: data.version,
     })
+    await syncGlobalStatsContribution(uid, { force: true })
 
     store.addLog('Save backed up to cloud.', 'system')
     return true

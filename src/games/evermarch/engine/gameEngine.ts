@@ -13,6 +13,7 @@ import { getTaskById, type ResourceDrop, type TaskDefinition } from '../data/tas
 import { getResourceDefinition, getResourceName } from '../data/resources'
 import { saveLocal } from './saveSystem'
 import { SKILLS, type LaneType, type SkillId } from '../data/skills'
+import { syncGlobalStatsForCurrentUser } from './globalStats'
 
 const TICK_INTERVAL = 100 // ms — game ticks 10 times per second
 const AUTO_SAVE_INTERVAL = 30_000 // auto-save every 30 seconds
@@ -114,6 +115,7 @@ export function startEngine() {
     if (now - lastAutoSave >= AUTO_SAVE_INTERVAL) {
       lastAutoSave = now
       saveLocal()
+      void syncGlobalStatsForCurrentUser()
     }
   }, TICK_INTERVAL)
 }
@@ -127,6 +129,7 @@ export function stopEngine() {
     tickHandle = null
   }
   saveLocal()
+  void syncGlobalStatsForCurrentUser({ force: true })
 }
 
 /**

@@ -115,7 +115,7 @@ function tick(deltaMs: number) {
   const store = useGameStore()
 
   // Track playtime
-  store.playtime += deltaMs / 1000
+  store.recordOnlineTime(deltaMs)
 
   // Advance idle lane
   advanceLane('idle', deltaMs, store)
@@ -138,6 +138,7 @@ function advanceLane(
   const skillLevel = store.getSkillLevel(task.skillId)
   if (skillLevel < task.levelRequired) return
 
+  store.recordLaneWork(task.id, laneType, deltaMs)
   lane.progress += deltaMs
 
   // Complete actions
@@ -159,7 +160,8 @@ function completeAction(
   store: ReturnType<typeof useGameStore>,
   source: ActionSource,
   silent = false,
-  multiplier = 1
+  multiplier = 1,
+  statsLaneType?: LaneType
 ): ActionResult | null {
   if (!canPayCosts(task, store, multiplier)) {
     if (!silent) {
@@ -172,6 +174,19 @@ function completeAction(
 
   const xp = task.xpPerAction * multiplier
   store.addXp(task.skillId, xp, { toast: !silent })
+  const laneType = statsLaneType ?? (source === 'offline' ? 'idle' : source)
+  if (source === 'active') {
+    store.recordLaneWork(task.id, laneType, task.baseInterval * multiplier, source)
+  }
+  store.recordTaskAction({
+    taskId: task.id,
+    skillId: task.skillId,
+    source,
+    laneType,
+    xp,
+    workMs: task.baseInterval * multiplier,
+    activeClicks: source === 'active' ? 1 : 0,
+  })
   const gainedDrops = task.drops.map((drop) => ({
     resourceId: drop.resourceId,
     amount: drop.amount * multiplier,
@@ -208,7 +223,9 @@ function spendTaskCosts(
   multiplier: number
 ) {
   for (const cost of task.costs ?? []) {
-    store.removeItem(cost.resourceId, cost.amount * multiplier)
+    const amount = cost.amount * multiplier
+    store.removeItem(cost.resourceId, amount)
+    store.recordItemConsumed(cost.resourceId, amount)
   }
 }
 
@@ -254,6 +271,7 @@ export function processOfflineProgress(lastSavedAt: number): OfflineProgressSumm
   if (elapsed < 1000) return null // Less than 1 second, skip
 
   const offlineMs = Math.min(elapsed, MAX_OFFLINE_MS)
+  store.recordOfflinePeriod(elapsed, offlineMs)
   const summary: OfflineProgressSummary = {
     elapsedMs: elapsed,
     processedMs: offlineMs,
@@ -308,6 +326,7 @@ function processLaneOffline(
   const skillLevel = store.getSkillLevel(task.skillId)
   if (skillLevel < task.levelRequired) return
 
+  store.recordLaneWork(task.id, laneType, offlineMs, 'offline')
   const totalProgress = lane.progress + offlineMs
   const actionCount = Math.floor(totalProgress / task.baseInterval)
   lane.progress = totalProgress % task.baseInterval
@@ -319,7 +338,7 @@ function processLaneOffline(
   // Replay every completed action so future random drops resolve the same way offline.
   for (let index = 0; index < actionCount; index++) {
     const levelBefore = store.getSkillLevel(task.skillId)
-    const result = completeAction(task, store, 'offline', true)
+    const result = completeAction(task, store, 'offline', true, 1, laneType)
     if (!result) {
       lane.progress = 0
       laneSummary.blocked = true

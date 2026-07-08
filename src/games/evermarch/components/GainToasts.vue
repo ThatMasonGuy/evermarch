@@ -66,7 +66,7 @@ function formatNumber(value: number): string {
 <style scoped>
 .gain-toasts {
   position: fixed;
-  left: 196px;
+  right: 68px;
   bottom: 14px;
   z-index: 160;
   pointer-events: none;
@@ -75,7 +75,7 @@ function formatNumber(value: number): string {
 .gain-toast-stack {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 6px;
 }
 
@@ -167,20 +167,19 @@ function formatNumber(value: number): string {
 
 @media (max-width: 1024px) {
   .gain-toasts {
-    left: 72px;
+    right: 68px;
   }
 }
 
 @media (max-width: 768px) {
   .gain-toasts {
-    left: 50%;
+    right: 12px;
     bottom: 12px;
     width: calc(100vw - 24px);
-    transform: translateX(-50%);
   }
 
   .gain-toast-stack {
-    align-items: center;
+    align-items: flex-end;
   }
 
   .gain-toast {

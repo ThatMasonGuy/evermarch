@@ -1,20 +1,23 @@
 <template>
   <div class="skills-panel">
-    <div class="skills-header">
+    <div v-if="showHeader" class="skills-header">
       <h2 class="skills-title">Skills</h2>
       <span class="skills-sub">Total Level: {{ store.totalLevel }}</span>
     </div>
 
     <div class="skills-grid">
-      <div
+      <button
         v-for="skill in skillData"
         :key="skill.id"
+        type="button"
         class="skill-card"
         :class="{
-          'skill-card-active': isInActiveLane(skill.id),
           'skill-card-idle': isInIdleLane(skill.id),
-          'skill-card-background': isInBackgroundLane(skill.id),
         }"
+        :disabled="!skill.currentTaskId"
+        :aria-pressed="isInIdleLane(skill.id)"
+        :title="routineSelectTitle(skill)"
+        @click="selectRoutineSkill(skill)"
       >
         <div class="skill-icon" :style="{ background: skill.def.color + '18', color: skill.def.color }">
           <img v-if="skill.sprite" :src="skill.sprite" alt="" class="skill-sprite" />
@@ -63,68 +66,35 @@
               :style="{ width: skill.masteryPercent + '%' }"
             ></div>
           </div>
-          <div class="skill-actions">
-            <button
-              v-if="skill.canUseActive"
-              type="button"
-              class="skill-action-btn skill-action-active"
-              :class="{ 'skill-action-current': isInActiveLane(skill.id) }"
-              :disabled="!skill.currentTaskId"
-              :title="laneActionTitle('Active', skill.currentTaskName)"
-              :aria-label="laneActionLabel('Active', skill.def.name, skill.currentTaskName)"
-              @click="assignLane('active', skill.currentTaskId)"
-            >
-              <MousePointerClick :size="12" />
-              <span>Active</span>
-            </button>
-            <button
-              v-if="skill.canUseIdle"
-              type="button"
-              class="skill-action-btn skill-action-idle"
-              :class="{ 'skill-action-current': isInIdleLane(skill.id) }"
-              :disabled="!skill.currentTaskId"
-              :title="laneActionTitle('Routine', skill.currentTaskName)"
-              :aria-label="laneActionLabel('Routine', skill.def.name, skill.currentTaskName)"
-              @click="assignLane('idle', skill.currentTaskId)"
-            >
-              <Clock :size="12" />
-              <span>Routine</span>
-            </button>
-            <button
-              v-if="skill.canUseBackground"
-              type="button"
-              class="skill-action-btn skill-action-background"
-              :class="{ 'skill-action-current': isInBackgroundLane(skill.id) }"
-              :disabled="!skill.currentTaskId"
-              :title="laneActionTitle('Background', skill.currentTaskName)"
-              :aria-label="laneActionLabel('Background', skill.def.name, skill.currentTaskName)"
-              @click="assignLane('background', skill.currentTaskId)"
-            >
-              <Sprout :size="12" />
-              <span>Background</span>
-            </button>
-          </div>
         </div>
         <div class="skill-lane-badge" v-if="getLaneBadge(skill.id)">
           {{ getLaneBadge(skill.id) }}
         </div>
-      </div>
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { BookOpen, Clock, Fish, FlameKindling, Hammer, MousePointerClick, Pickaxe, Sprout, Swords, TreePine, Trophy } from 'lucide-vue-next'
+import { BookOpen, Fish, FlameKindling, Hammer, Pickaxe, Sprout, Swords, TreePine, Trophy } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
-import { SKILL_LIST, type LaneType, type SkillId } from '../data/skills'
+import { SKILL_LIST, type SkillDefinition, type SkillId } from '../data/skills'
 import { getTaskById, getTasksForSkill, type TaskDefinition } from '../data/tasks'
 import { spriteForSkill } from '../assets/visualAssets'
 
 const store = useGameStore()
 
+withDefaults(defineProps<{
+  showHeader?: boolean
+}>(), {
+  showHeader: true,
+})
+
 const skillData = computed(() =>
-  SKILL_LIST.map((def) => {
+  SKILL_LIST
+  .filter((def) => def.allowedLanes.includes('idle'))
+  .map((def) => {
     const level = store.getSkillLevel(def.id)
     const tasks = getTasksForSkill(def.id)
     const unlockedTasks = tasks.filter((task) => level >= task.levelRequired)
@@ -148,18 +118,9 @@ const skillData = computed(() =>
       averageMasteryLevel: mastery.averageLevel,
       masteryPercent: mastery.percent,
       trueMastery: mastery.trueMastery,
-      canUseActive: def.allowedLanes.includes('active'),
-      canUseIdle: def.allowedLanes.includes('idle'),
-      canUseBackground: def.allowedLanes.includes('background'),
     }
   })
 )
-
-function getActiveSkillId(): SkillId | null {
-  const taskId = store.lanes.active.taskId
-  if (!taskId) return null
-  return getTaskById(taskId)?.skillId ?? null
-}
 
 function getIdleSkillId(): SkillId | null {
   const taskId = store.lanes.idle.taskId
@@ -167,36 +128,22 @@ function getIdleSkillId(): SkillId | null {
   return getTaskById(taskId)?.skillId ?? null
 }
 
-function getBackgroundSkillId(): SkillId | null {
-  const taskId = store.lanes.background.taskId
-  if (!taskId) return null
-  return getTaskById(taskId)?.skillId ?? null
-}
-
-function isInActiveLane(id: SkillId): boolean { return getActiveSkillId() === id }
 function isInIdleLane(id: SkillId): boolean { return getIdleSkillId() === id }
-function isInBackgroundLane(id: SkillId): boolean { return getBackgroundSkillId() === id }
 
 function getLaneBadge(id: SkillId): string | null {
-  if (isInActiveLane(id)) return 'Active'
-  if (isInIdleLane(id)) return 'Routine'
-  if (isInBackgroundLane(id)) return 'Background'
+  if (isInIdleLane(id)) return 'Selected'
   return null
 }
 
-function assignLane(laneType: LaneType, taskId: string | null) {
-  if (!taskId) return
-  store.setLaneTask(laneType, taskId)
+function selectRoutineSkill(skill: { currentTaskId: string | null }) {
+  if (!skill.currentTaskId) return
+  store.setLaneTask('idle', skill.currentTaskId)
 }
 
-function laneActionTitle(laneLabel: string, taskName: string | null): string {
-  return taskName ? `Set ${laneLabel} to ${taskName}` : 'No unlocked task'
-}
-
-function laneActionLabel(laneLabel: string, skillName: string, taskName: string | null): string {
-  return taskName
-    ? `Set ${laneLabel} ${skillName} task to ${taskName}`
-    : `${skillName} has no unlocked ${laneLabel} task`
+function routineSelectTitle(skill: { def: SkillDefinition; currentTaskName: string | null }): string {
+  return skill.currentTaskName
+    ? `Set Routine to ${skill.currentTaskName}`
+    : `${skill.def.name} has no unlocked routine task`
 }
 
 function taskChoiceLabel(taskDef: TaskDefinition): string {
@@ -235,6 +182,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .skill-card {
+  width: 100%;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -242,27 +190,26 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   border-radius: var(--radius-md);
   border: 2px solid var(--color-border);
   background: var(--color-bg-card);
+  color: inherit;
+  font-family: var(--font-body);
+  text-align: left;
   transition: all var(--transition-fast);
   position: relative;
+  cursor: pointer;
 }
 .skill-card:hover {
   border-color: var(--color-border-hover);
   background: var(--color-bg-card-hover);
 }
-
-.skill-card-active {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 8px var(--color-accent-glow);
-}
 .skill-card-idle {
   border-color: rgba(251, 191, 36, 0.3);
   box-shadow: 0 0 8px rgba(251, 191, 36, 0.1);
 }
-.skill-card-background {
-  border-color: rgba(167, 139, 250, 0.3);
-  box-shadow: 0 0 8px rgba(167, 139, 250, 0.1);
-}
 
+.skill-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
 .skill-icon {
   width: 34px;
   height: 34px;
@@ -400,60 +347,6 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   border-radius: 2px;
   background: linear-gradient(90deg, #d97706, #fde68a);
   transition: width 0.3s ease;
-}
-
-.skill-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  padding-top: 3px;
-}
-
-.skill-action-btn {
-  min-height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 4px 7px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-surface);
-  color: var(--color-text-muted);
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.skill-action-btn:hover:not(:disabled) {
-  border-color: var(--color-border-hover);
-  color: var(--color-text-primary);
-  background: var(--color-bg-card-hover);
-}
-
-.skill-action-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.skill-action-current {
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
-  background: var(--color-accent-glow);
-}
-
-.skill-action-idle.skill-action-current {
-  border-color: rgba(251, 191, 36, 0.75);
-  color: #fde68a;
-  background: rgba(251, 191, 36, 0.12);
-}
-
-.skill-action-background.skill-action-current {
-  border-color: rgba(167, 139, 250, 0.75);
-  color: #ddd6fe;
-  background: rgba(167, 139, 250, 0.12);
 }
 
 .skill-lane-badge {

@@ -8,8 +8,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { SkillId, LaneType } from '../data/skills'
 import { SKILL_LIST } from '../data/skills'
-import { ALL_TASKS, getDefaultTaskIdForLane, getTaskById, getTasksForSkill, normalizeTaskId } from '../data/tasks'
-import { getResourceDefinition } from '../data/resources'
+import { ALL_TASKS, getDefaultTaskIdForLane, getTaskById, getTasksForSkill, normalizeTaskId, type TaskDefinition } from '../data/tasks'
+import { getResourceDefinition, getResourceName } from '../data/resources'
 import { MAX_LEVEL, levelForXp, xpProgressFraction, xpToNextLevel } from '../data/xp'
 import {
   TASK_MASTERY_MAX_XP,
@@ -46,6 +46,15 @@ export interface LaneState {
   taskId: string | null
   /** Accumulated progress toward next action (ms) */
   progress: number
+}
+
+export interface FarmingPlotState {
+  id: string
+  taskId: string | null
+  plantedAt: number | null
+  readyAt: number | null
+  notifiedAt: number | null
+  lastCollectedAt: number | null
 }
 
 export interface LogEntry {
@@ -198,6 +207,7 @@ export interface GameSaveData {
     idle: { taskId: string | null; progress: number }
     background: { taskId: string | null; progress: number }
   }
+  farmingPlots?: FarmingPlotState[]
   stats?: GameStats
 }
 
@@ -213,13 +223,16 @@ interface TaskActionStatsInput {
   activeSavedMs?: number
 }
 
-const SAVE_VERSION = 4
+const SAVE_VERSION = 5
 const STATS_VERSION = 3
 const ACTIVE_CLICK_SESSION_GAP_MS = 2_000
 const ACTIVE_SAVED_TIME_CAP_MULTIPLIER = 2
 const TOAST_DURATION_MS = 3_200
 const TOAST_MERGE_WINDOW_MS = 1_200
 const MAX_GAIN_TOASTS = 6
+const FARMING_PLOT_UNLOCK_LEVELS = [1, 10, 25, 45, 70, 90]
+const FARMING_MIN_GROWTH_MS = 6 * 60 * 60 * 1000
+const FARMING_MAX_GROWTH_MS = 12 * 60 * 60 * 1000
 const COLLECTIBLE_RESOURCE_IDS = Array.from(new Set(
   ALL_TASKS.flatMap((task) => task.drops.map((drop) => drop.resourceId))
 )).sort((a, b) => getResourceDefinition(a).name.localeCompare(getResourceDefinition(b).name))
@@ -249,6 +262,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     idle: { type: 'idle', taskId: getDefaultTaskIdForLane('idle'), progress: 0 },
     background: { type: 'background', taskId: getDefaultTaskIdForLane('background'), progress: 0 },
   })
+  const farmingPlots = ref<FarmingPlotState[]>(createDefaultFarmingPlots())
 
   const activityLog = ref<LogEntry[]>([])
   let logCounter = 0
@@ -293,6 +307,23 @@ export const useGameStore = defineStore('evermarch-game', () => {
       if (count <= 0) return sum
       return sum + getResourceDefinition(resourceId).sellValue * count
     }, 0)
+  )
+
+  const unlockedFarmingPlotCount = computed(() =>
+    farmingPlotUnlockCountForLevel(getSkillLevel('farming'))
+  )
+
+  const plantedFarmingPlotCount = computed(() =>
+    farmingPlots.value.filter((plot) => !!plot.taskId).length
+  )
+
+  const readyFarmingPlotCount = computed(() => {
+    const now = Date.now()
+    return farmingPlots.value.filter((plot) => isFarmingPlotReady(plot, now)).length
+  })
+
+  const unlockedFarmingTasks = computed(() =>
+    getTasksForSkill('farming').filter((task) => getSkillLevel('farming') >= task.levelRequired)
   )
 
   const completionProgress = computed<CompletionProgress>(() => {
@@ -815,6 +846,151 @@ export const useGameStore = defineStore('evermarch-game', () => {
     addLog(`Started ${task?.name ?? lane.taskId} (${laneType})`, 'system')
   }
 
+  function plantFarmingPlot(plotId: string, taskId: string): boolean {
+    const plot = farmingPlots.value.find((candidate) => candidate.id === plotId)
+    const plotIndex = plot ? farmingPlots.value.indexOf(plot) : -1
+    const task = getTaskById(taskId)
+
+    if (!plot || plotIndex < 0) return false
+    if (!isFarmingPlotUnlockedAtIndex(plotIndex)) {
+      addLog(`Field ${plotIndex + 1} unlocks at Farming Lv.${farmingPlotUnlockLevel(plotIndex)}.`, 'system')
+      return false
+    }
+    if (!task || task.skillId !== 'farming') {
+      addLog('Choose a crop before planting.', 'system')
+      return false
+    }
+    if (getSkillLevel('farming') < task.levelRequired) {
+      addLog(`${taskChoiceLabel(task.name)} unlocks at Farming Lv.${task.levelRequired}.`, 'system')
+      return false
+    }
+    if (plot.taskId) {
+      addLog(`Field ${plotIndex + 1} is already planted.`, 'system')
+      return false
+    }
+
+    const now = Date.now()
+    plot.taskId = task.id
+    plot.plantedAt = now
+    plot.readyAt = now + getFarmingGrowthDurationMs(task)
+    plot.notifiedAt = null
+    addLog(`Planted ${taskChoiceLabel(task.name)} in Field ${plotIndex + 1}.`, 'system')
+    return true
+  }
+
+  function collectFarmingPlot(plotId: string): boolean {
+    return harvestFarmingPlot(plotId, false)
+  }
+
+  function collectAndReplantFarmingPlot(plotId: string): boolean {
+    return harvestFarmingPlot(plotId, true)
+  }
+
+  function harvestFarmingPlot(plotId: string, replant: boolean): boolean {
+    const plot = farmingPlots.value.find((candidate) => candidate.id === plotId)
+    const plotIndex = plot ? farmingPlots.value.indexOf(plot) : -1
+    const task = plot?.taskId ? getTaskById(plot.taskId) : null
+
+    if (!plot || plotIndex < 0) return false
+    if (!task || task.skillId !== 'farming') {
+      addLog(`Field ${plotIndex + 1} is empty.`, 'system')
+      return false
+    }
+
+    const now = Date.now()
+    if (!isFarmingPlotReady(plot, now)) {
+      addLog(`${taskChoiceLabel(task.name)} is still growing in Field ${plotIndex + 1}.`, 'system')
+      return false
+    }
+
+    const growthMs = Math.max(0, (plot.readyAt ?? now) - (plot.plantedAt ?? now))
+    const yieldMultiplier = getFarmingYieldAmount(task)
+    const xp = getFarmingHarvestXp(task, yieldMultiplier)
+    const taskLabel = taskChoiceLabel(task.name)
+    const previousTaskId = task.id
+    const gainedDrops = task.drops.map((drop) => ({
+      resourceId: drop.resourceId,
+      amount: drop.amount * yieldMultiplier,
+    }))
+
+    recordLaneWork(task.id, 'background', growthMs)
+    addXp('farming', xp)
+    addTaskMasteryXp(task.id, xp)
+    recordTaskAction({
+      taskId: task.id,
+      skillId: 'farming',
+      source: 'background',
+      laneType: 'background',
+      xp,
+    })
+
+    for (const drop of gainedDrops) {
+      addItem(drop.resourceId, drop.amount)
+    }
+
+    const harvestLabel = gainedDrops
+      .map((drop) => `${drop.amount.toLocaleString()} ${getResourceName(drop.resourceId)}`)
+      .join(', ')
+    addLog(`Harvested ${harvestLabel} from Field ${plotIndex + 1}.`, 'gain')
+
+    plot.taskId = null
+    plot.plantedAt = null
+    plot.readyAt = null
+    plot.notifiedAt = null
+    plot.lastCollectedAt = now
+
+    if (replant) {
+      const planted = plantFarmingPlot(plot.id, previousTaskId)
+      if (planted) {
+        addLog(`Replanted ${taskLabel} in Field ${plotIndex + 1}.`, 'system')
+      }
+      return planted
+    }
+
+    return true
+  }
+
+  function processFarmingNotifications(timestamp = Date.now()) {
+    for (const [index, plot] of farmingPlots.value.entries()) {
+      if (plot.notifiedAt || !isFarmingPlotReady(plot, timestamp)) continue
+
+      const task = plot.taskId ? getTaskById(plot.taskId) : null
+      if (!task) continue
+
+      plot.notifiedAt = timestamp
+      addLog(`Field ${index + 1} is ready: ${taskChoiceLabel(task.name)} can be harvested.`, 'system')
+    }
+  }
+
+  function getFarmingGrowthDurationMs(taskOrId: TaskDefinition | string): number {
+    const task = typeof taskOrId === 'string' ? getTaskById(taskOrId) : taskOrId
+    if (!task || task.skillId !== 'farming') return FARMING_MIN_GROWTH_MS
+
+    const levelRatio = Math.max(0, Math.min(1, (task.levelRequired - 1) / 98))
+    return Math.round(FARMING_MIN_GROWTH_MS + (FARMING_MAX_GROWTH_MS - FARMING_MIN_GROWTH_MS) * levelRatio)
+  }
+
+  function getFarmingYieldAmount(taskOrId: TaskDefinition | string): number {
+    const task = typeof taskOrId === 'string' ? getTaskById(taskOrId) : taskOrId
+    if (!task || task.skillId !== 'farming') return 0
+
+    const growthHours = getFarmingGrowthDurationMs(task) / (60 * 60 * 1000)
+    return Math.max(12, Math.round(18 + task.levelRequired * 2.2 + growthHours))
+  }
+
+  function getFarmingPlotUnlockLevel(index: number): number {
+    return farmingPlotUnlockLevel(index)
+  }
+
+  function isFarmingPlotUnlocked(plotId: string): boolean {
+    const index = farmingPlots.value.findIndex((plot) => plot.id === plotId)
+    return index >= 0 && isFarmingPlotUnlockedAtIndex(index)
+  }
+
+  function isFarmingPlotUnlockedAtIndex(index: number): boolean {
+    return getSkillLevel('farming') >= farmingPlotUnlockLevel(index)
+  }
+
   function taskChoiceLabel(taskName: string): string {
     return taskName.replace(/^(Mine|Chop|Fish|Kindle|Cook|Forge|Shape|Craft|Bind|Grow)\s+/, '')
   }
@@ -945,6 +1121,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
         idle: { taskId: lanes.value.idle.taskId, progress: lanes.value.idle.progress },
         background: { taskId: lanes.value.background.taskId, progress: lanes.value.background.progress },
       },
+      farmingPlots: cloneFarmingPlots(farmingPlots.value),
       stats: cloneStats(stats.value),
     }
   }
@@ -960,6 +1137,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     inventory.value = data.inventory ?? {}
     stats.value = normalizeStats(data.stats, inventory.value, playtime.value, gold.value)
     taskMastery.value = normalizeTaskMastery(data.taskMastery, stats.value)
+    farmingPlots.value = normalizeFarmingPlots(data.farmingPlots)
     lastActiveClickAt = null
     resetActiveCadence()
 
@@ -1008,6 +1186,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
       idle: { type: 'idle', taskId: getDefaultTaskIdForLane('idle'), progress: 0 },
       background: { type: 'background', taskId: getDefaultTaskIdForLane('background'), progress: 0 },
     }
+    farmingPlots.value = createDefaultFarmingPlots()
     activityLog.value = []
     clearGainToasts()
     logCounter = 0
@@ -1030,6 +1209,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     gold,
     stats,
     lanes,
+    farmingPlots,
     activityLog,
     gainToasts,
     activeCadence,
@@ -1039,6 +1219,10 @@ export const useGameStore = defineStore('evermarch-game', () => {
     totalXp,
     accountAgeMs,
     inventoryValue,
+    unlockedFarmingPlotCount,
+    plantedFarmingPlotCount,
+    readyFarmingPlotCount,
+    unlockedFarmingTasks,
     completionProgress,
     // Getters
     getSkill,
@@ -1071,6 +1255,14 @@ export const useGameStore = defineStore('evermarch-game', () => {
     addGold,
     sellItem,
     setLaneTask,
+    plantFarmingPlot,
+    collectFarmingPlot,
+    collectAndReplantFarmingPlot,
+    processFarmingNotifications,
+    getFarmingGrowthDurationMs,
+    getFarmingYieldAmount,
+    getFarmingPlotUnlockLevel,
+    isFarmingPlotUnlocked,
     addLog,
     dismissGainToast,
     resetActiveCadence,
@@ -1104,6 +1296,40 @@ function createActiveCadenceState(): ActiveCadenceState {
     clickGapMs: null,
     lastClickAt: null,
   }
+}
+
+function createDefaultFarmingPlots(): FarmingPlotState[] {
+  return FARMING_PLOT_UNLOCK_LEVELS.map((_, index) => createFarmingPlot(index))
+}
+
+function createFarmingPlot(index: number): FarmingPlotState {
+  return {
+    id: `field-${index + 1}`,
+    taskId: null,
+    plantedAt: null,
+    readyAt: null,
+    notifiedAt: null,
+    lastCollectedAt: null,
+  }
+}
+
+function isFarmingPlotReady(plot: FarmingPlotState, timestamp = Date.now()): boolean {
+  return !!plot.taskId
+    && typeof plot.readyAt === 'number'
+    && Number.isFinite(plot.readyAt)
+    && timestamp >= plot.readyAt
+}
+
+function farmingPlotUnlockCountForLevel(level: number): number {
+  return FARMING_PLOT_UNLOCK_LEVELS.filter((unlockLevel) => level >= unlockLevel).length
+}
+
+function farmingPlotUnlockLevel(index: number): number {
+  return FARMING_PLOT_UNLOCK_LEVELS[index] ?? FARMING_PLOT_UNLOCK_LEVELS[FARMING_PLOT_UNLOCK_LEVELS.length - 1]!
+}
+
+function getFarmingHarvestXp(task: TaskDefinition, yieldAmount: number): number {
+  return Math.max(task.xpPerAction, Math.round(task.xpPerAction * yieldAmount))
 }
 
 function createItemStats(): ItemStats {
@@ -1342,6 +1568,41 @@ function cloneTaskMastery(taskMastery: Record<string, TaskMasteryState>): Record
         xp: clampTaskMasteryXp(mastery.xp),
       }]),
   )
+}
+
+function normalizeFarmingPlots(saved: FarmingPlotState[] | undefined): FarmingPlotState[] {
+  const normalized = createDefaultFarmingPlots()
+  if (!Array.isArray(saved)) return normalized
+
+  for (const savedPlot of saved) {
+    if (!savedPlot?.id) continue
+
+    const index = normalized.findIndex((plot) => plot.id === savedPlot.id)
+    if (index < 0) continue
+
+    const task = savedPlot.taskId ? getTaskById(savedPlot.taskId) : null
+    const taskId = task?.skillId === 'farming' ? task.id : null
+    const plantedAt = normalizeTimestamp(savedPlot.plantedAt)
+    const readyAt = normalizeTimestamp(savedPlot.readyAt)
+    const fallbackReadyAt = task && plantedAt ? plantedAt + Math.round(
+      FARMING_MIN_GROWTH_MS + (FARMING_MAX_GROWTH_MS - FARMING_MIN_GROWTH_MS) * Math.max(0, Math.min(1, (task.levelRequired - 1) / 98))
+    ) : null
+
+    normalized[index] = {
+      id: normalized[index]!.id,
+      taskId,
+      plantedAt: taskId ? plantedAt : null,
+      readyAt: taskId ? (readyAt ?? fallbackReadyAt) : null,
+      notifiedAt: taskId ? normalizeTimestamp(savedPlot.notifiedAt) : null,
+      lastCollectedAt: normalizeTimestamp(savedPlot.lastCollectedAt),
+    }
+  }
+
+  return normalized
+}
+
+function cloneFarmingPlots(plots: FarmingPlotState[]): FarmingPlotState[] {
+  return plots.map((plot) => ({ ...plot }))
 }
 
 function pickNumericItemStats(item: ItemStats): Omit<ItemStats, 'firstAcquiredAt' | 'lastAcquiredAt'> {

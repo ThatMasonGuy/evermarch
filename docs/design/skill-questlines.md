@@ -80,7 +80,9 @@ Core objective types:
 - `perform_task`: complete a task/action a number of times.
 - `reach_skill_level`: reach a skill level.
 - `reach_task_mastery`: reach mastery for a specific task.
-- `assign_lane`: use a skill in active, routine, or background lane.
+- `assign_lane`: use a skill in active or routine.
+- `plant_crop`: plant a crop in an unlocked Farming field.
+- `harvest_crop`: collect a ready Farming field.
 - `sell_resource`: sell a resource amount.
 - `craft_resource`: produce an artisan output.
 
@@ -105,7 +107,8 @@ Good reward patterns:
 - Active-only charges such as TNT.
 - Unlock a new active event type, vein type, or convenience.
 - Reduce hardness for specific low-tier blocks.
-- Increase offline cap for a specific passive lane by a small amount.
+- Increase offline cap for routine work by a small amount.
+- Unlock field capacity, crop convenience, or small yield bonuses for Farming.
 - Cosmetic frame/badge/title for the skill.
 - Unlock a new world route or quest branch.
 
@@ -155,17 +158,18 @@ Definitions should be versionable. If questline requirements change later, save 
 
 Questlines need two surfaces:
 
-1. **Skill detail quest panel**
-   - Shows the current stage for the selected skill.
-   - Shows objective progress bars and reward preview.
-   - Lets the player claim completed rewards.
-
-2. **Quest overview**
+1. **Quest overview**
    - Shows every skill's current quest stage.
-   - Highlights claimable rewards.
+   - Highlights ready/claimable rewards.
    - Helps players choose what to work on next.
 
+2. **Skill route context**
+   - Shows the current stage for the selected skill.
+   - Shows objective progress bars and reward preview.
+   - Can live inside the combined Routine/Skill Routes page once persistent quest state exists.
+
 The active lane can also show a small "quest progress" chip when the current task contributes to the active skill's quest.
+Farming can show quest progress directly on field cards once crop quest stages become persistent.
 
 ## Skill Themes
 
@@ -177,7 +181,7 @@ Each skill questline should emphasize what makes that skill distinct.
 - Firemaking: logs consumed, ember production, beacon/kiln milestones.
 - Cooking: recipes completed, food tiers, ingredient chains.
 - Smithing: ore-to-metalwork conversion and fittings/frames.
-- Farming: background growth, crop variety, long-tail harvests.
+- Farming: field planting, background growth timers, crop variety, long-tail harvests.
 - Fletching: logs into arrows/bows, output batches.
 - Crafting: ores/gems into trinkets and trade goods.
 - Runecrafting: rune essence conversion and rune batches.
@@ -186,18 +190,18 @@ Each skill questline should emphasize what makes that skill distinct.
 
 First buildable slice:
 
-1. Add static questline definitions for Mining and Woodcutting only.
-2. Track objective progress for collect, perform task, and reach level.
-3. Add a compact current quest panel to the Skills view.
+1. Add a generated Quest overview from existing skill, task, and Farming field state.
+2. Add static questline definitions for Mining and Woodcutting.
+3. Track objective progress for collect, perform task, reach level, plant crop, and harvest crop.
 4. Add reward claiming for simple resource bundles and small skill/task modifiers.
 5. Persist quest state in saves.
 
 Second slice:
 
 1. Add all remaining skill questlines.
-2. Add quest overview.
-3. Add active mining objectives after the mining minigame exists.
-4. Add claimable reward badges and notifications.
+2. Add active mining objectives after the mining minigame exists.
+3. Add claimable reward badges and notifications.
+4. Add skill-specific quest context to Routine, Active, and Farming panels.
 
 Third slice:
 

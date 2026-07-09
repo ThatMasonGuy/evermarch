@@ -65,7 +65,7 @@
       </div>
     </div>
 
-    <div class="passive-selector" v-if="selectableSkills.length > 0">
+    <div class="passive-selector" v-if="showSelector && selectableSkills.length > 0">
       <div class="passive-skill-tabs" :aria-label="`${laneLabel} task type`">
         <button
           v-for="skill in selectableSkills"
@@ -146,9 +146,12 @@ import { getTaskById, ALL_TASKS, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
 import { formatCostReadiness, getCostReadiness, hasMissingCosts } from '../utils/taskCosts'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   laneType: 'idle' | 'background'
-}>()
+  showSelector?: boolean
+}>(), {
+  showSelector: true,
+})
 
 const store = useGameStore()
 

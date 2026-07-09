@@ -17,21 +17,26 @@
 
       <!-- Center Content -->
       <main class="em-main">
-        <!-- Default: Lanes View (Active + Passive) -->
-        <div v-if="activeTab === 'lanes'" class="em-lanes-view animate-fade-in">
+        <!-- Active View -->
+        <div v-if="activeTab === 'active'" class="em-active-view animate-fade-in">
           <!-- Active Lane — dominant center -->
           <ActiveLanePanel />
 
-          <!-- Passive Lanes -->
-          <div class="em-passive-lanes">
-            <PassiveLanePanel lane-type="idle" />
-            <PassiveLanePanel lane-type="background" />
-          </div>
         </div>
 
-        <!-- Skills View -->
-        <div v-else-if="activeTab === 'skills'" class="animate-fade-in">
-          <SkillsPanel />
+        <!-- Routine View -->
+        <div v-else-if="activeTab === 'routine'" class="em-routine-view animate-fade-in">
+          <RoutinePanel />
+        </div>
+
+        <!-- Farming View -->
+        <div v-else-if="activeTab === 'farming'" class="animate-fade-in">
+          <FarmingPanel />
+        </div>
+
+        <!-- Quests View -->
+        <div v-else-if="activeTab === 'quests'" class="animate-fade-in">
+          <QuestsPanel @navigate="activeTab = $event" />
         </div>
 
         <!-- Inventory View -->
@@ -87,8 +92,9 @@ import TopBar from '../components/TopBar.vue'
 import SidebarNav from '../components/SidebarNav.vue'
 import ActivityLog from '../components/ActivityLog.vue'
 import ActiveLanePanel from '../components/ActiveLanePanel.vue'
-import PassiveLanePanel from '../components/PassiveLanePanel.vue'
-import SkillsPanel from '../components/SkillsPanel.vue'
+import RoutinePanel from '../components/RoutinePanel.vue'
+import FarmingPanel from '../components/FarmingPanel.vue'
+import QuestsPanel from '../components/QuestsPanel.vue'
 import InventoryPanel from '../components/InventoryPanel.vue'
 import WorldPanel from '../components/WorldPanel.vue'
 import ProgressionPanel from '../components/ProgressionPanel.vue'
@@ -103,7 +109,7 @@ import { loadLocal, saveLocal, pushToCloud } from '../engine/saveSystem'
 
 const store = useGameStore()
 const authStore = useAuthStore()
-const activeTab = ref('lanes')
+const activeTab = ref('active')
 const showSettings = ref(false)
 const isLogCollapsed = ref(true)
 const offlineSummary = ref<OfflineProgressSummary | null>(null)
@@ -119,7 +125,7 @@ onMounted(() => {
   const savedData = loadLocal()
   if (savedData) {
     store.deserialize(savedData)
-    // Process offline gains for idle + background (NOT active)
+    // Process offline gains for routine work. Farming plots become ready by timestamp.
     offlineSummary.value = processOfflineProgress(savedData.lastSavedAt)
   } else {
     store.resetToDefaults()
@@ -291,18 +297,13 @@ async function handleBackup(): Promise<boolean> {
     rgba(0, 0, 0, 0.08);
 }
 
-/* ── Lanes View ──────────────────────────────────────────── */
-.em-lanes-view {
+/* ── Primary Views ───────────────────────────────────────── */
+.em-active-view,
+.em-routine-view {
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
-}
-
-.em-passive-lanes {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
 }
 
 /* ── Placeholder Panels ──────────────────────────────────── */
@@ -379,9 +380,6 @@ async function handleBackup(): Promise<boolean> {
     display: none;
   }
 
-  .em-passive-lanes {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 480px) {

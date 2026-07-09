@@ -2,7 +2,8 @@
  * Game Engine — the master tick that drives all Evermarch gameplay.
  *
  * - Single setInterval drives the entire game (no per-skill timers)
- * - Advances idle + background lanes on each tick
+ * - Advances the routine lane on each tick
+ * - Checks timestamp-based farming plots for readiness
  * - Active lane only progresses via explicit player clicks
  * - Handles offline catch-up on load
  * - Auto-saves locally on interval
@@ -35,7 +36,7 @@ let lastActiveClickAt: number | null = null
 let lastActiveTaskId: string | null = null
 let activeSavedProgressMs = 0
 
-export type PassiveLaneType = Extract<LaneType, 'idle' | 'background'>
+export type PassiveLaneType = Extract<LaneType, 'idle'>
 type ActionSource = 'active' | PassiveLaneType | 'offline'
 
 interface ActionResult {
@@ -92,7 +93,6 @@ export interface OfflineProgressSummary {
 
 const PASSIVE_LANE_LABELS: Record<PassiveLaneType, string> = {
   idle: 'Routine',
-  background: 'Background',
 }
 
 /**
@@ -138,15 +138,16 @@ export function stopEngine() {
  */
 function tick(deltaMs: number) {
   const store = useGameStore()
+  const now = Date.now()
 
   // Track playtime
   store.recordOnlineTime(deltaMs)
 
-  // Advance idle lane
+  // Advance routine lane
   advanceLane('idle', deltaMs, store)
 
-  // Advance background lane
-  advanceLane('background', deltaMs, store)
+  // Notify once when a planted crop has finished growing.
+  store.processFarmingNotifications(now)
 }
 
 function advanceLane(
@@ -221,7 +222,7 @@ function completeAction(
     store.addItem(drop.resourceId, drop.amount, { toast: !silent })
 
     if (!silent) {
-      const label = source === 'active' ? '' : source === 'idle' ? 'Routine: ' : 'Background: '
+      const label = source === 'active' ? '' : source === 'idle' ? 'Routine: ' : ''
       store.addLog(
         `${label}+${drop.amount} ${getResourceName(drop.resourceId)}`,
         'gain'
@@ -262,7 +263,6 @@ function formatCosts(costs: ResourceDrop[], multiplier: number): string {
 
 function missingCostPrefix(source: ActionSource): string {
   if (source === 'idle') return 'Routine needs'
-  if (source === 'background') return 'Background needs'
   return 'Need'
 }
 
@@ -377,7 +377,8 @@ function consumeActiveSavedProgress(currentProgressMs: number, actionProgressMs:
 }
 
 /**
- * Calculate and apply offline progress for idle + background lanes.
+ * Calculate and apply offline progress for the routine lane.
+ * Farming growth is timestamp-based and harvested by the player when they return.
  * Active lane does NOT progress offline.
  */
 export function processOfflineProgress(lastSavedAt: number): OfflineProgressSummary | null {
@@ -400,11 +401,10 @@ export function processOfflineProgress(lastSavedAt: number): OfflineProgressSumm
     lanes: [],
   }
 
-  // Process idle lane
+  // Process routine lane
   processLaneOffline('idle', offlineMs, store, summary)
 
-  // Process background lane
-  processLaneOffline('background', offlineMs, store, summary)
+  store.processFarmingNotifications(now)
 
   // Log offline gains
   if (summary.totalXp > 0) {

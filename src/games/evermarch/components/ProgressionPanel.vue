@@ -276,7 +276,7 @@ const timeStats = computed(() => [
     tooltip: `Based on ${formatNumber(account.value.activeClickCount)} active clicks, active play saved about ${formatDuration(account.value.activeSavedMs)} beyond routine pace.`,
   },
   { label: 'Routine Work', value: formatDuration(account.value.idleWorkMs) },
-  { label: 'Background Work', value: formatDuration(account.value.backgroundWorkMs) },
+  { label: 'Farming Growth', value: formatDuration(account.value.backgroundWorkMs) },
   { label: 'Offline Credited', value: formatDuration(account.value.offlineCreditedMs) },
   { label: 'Offline Missed', value: formatDuration(account.value.offlineMissedMs) },
 ])

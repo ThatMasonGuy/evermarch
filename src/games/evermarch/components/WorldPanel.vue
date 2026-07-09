@@ -167,7 +167,6 @@ const ICONS: Record<string, Component> = {
 const LANE_CONFIG: Array<{ id: LaneType; label: string; icon: string }> = [
   { id: 'active', label: 'Active', icon: 'MousePointerClick' },
   { id: 'idle', label: 'Routine', icon: 'Clock' },
-  { id: 'background', label: 'Background', icon: 'Sprout' },
 ]
 
 const PRODUCTION_SKILLS: SkillId[] = [
@@ -352,7 +351,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 .world-lane-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -378,10 +377,6 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 .world-lane-card-idle {
   border-color: rgba(251, 191, 36, 0.45);
-}
-
-.world-lane-card-background {
-  border-color: rgba(167, 139, 250, 0.45);
 }
 
 .world-card-top,

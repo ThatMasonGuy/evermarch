@@ -5,13 +5,18 @@
         v-for="tab in tabs"
         :key="tab.id"
         class="em-sidebar-btn"
-        :class="{ 'em-sidebar-btn-active': modelValue === tab.id }"
+        :class="{
+          'em-sidebar-btn-active': modelValue === tab.id,
+          'em-sidebar-btn-themed': !!tab.themeColor,
+        }"
+        :style="tab.themeColor ? { '--tab-theme-color': tab.themeColor } : undefined"
         :aria-label="tab.label"
         :title="tab.label"
         @click="$emit('update:modelValue', tab.id)"
       >
         <component :is="tab.icon" :size="18" />
         <span>{{ tab.label }}</span>
+        <i v-if="tab.themeColor" class="em-sidebar-material" aria-hidden="true"></i>
         <div v-if="tab.indicator" class="em-sidebar-indicator"></div>
       </button>
     </nav>
@@ -19,8 +24,11 @@
 </template>
 
 <script setup lang="ts">
-import { markRaw } from 'vue'
-import { BarChart3, BookOpen, Zap, MapPin, Swords, Package } from 'lucide-vue-next'
+import { computed, markRaw } from 'vue'
+import { BarChart3, Clock, ListChecks, MapPin, MousePointerClick, Package, Sprout, Swords } from 'lucide-vue-next'
+import { useGameStore } from '../stores/gameStore'
+import { getTaskById } from '../data/tasks'
+import { SKILLS, type SkillId } from '../data/skills'
 
 defineProps<{
   modelValue: string
@@ -30,14 +38,42 @@ defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const tabs = [
-  { id: 'skills', label: 'Skills', icon: markRaw(BookOpen), indicator: false },
-  { id: 'lanes', label: 'Lanes', icon: markRaw(Zap), indicator: true },
+const store = useGameStore()
+
+const baseTabs = [
+  { id: 'active', label: 'Active', icon: markRaw(MousePointerClick), indicator: true },
+  { id: 'routine', label: 'Routine', icon: markRaw(Clock), indicator: false },
+  { id: 'farming', label: 'Farming', icon: markRaw(Sprout), indicator: false },
+  { id: 'quests', label: 'Quests', icon: markRaw(ListChecks), indicator: false },
   { id: 'progression', label: 'Progress', icon: markRaw(BarChart3), indicator: false },
   { id: 'world', label: 'World', icon: markRaw(MapPin), indicator: false },
   { id: 'delve', label: 'Delve', icon: markRaw(Swords), indicator: false },
   { id: 'inventory', label: 'Inventory', icon: markRaw(Package), indicator: false },
 ]
+
+const activeSkillId = computed(() => skillIdForTask(store.lanes.active.taskId))
+const routineSkillId = computed(() => skillIdForTask(store.lanes.idle.taskId))
+
+const tabs = computed(() =>
+  baseTabs.map((tab) => ({
+    ...tab,
+    indicator: tab.id === 'farming' ? store.readyFarmingPlotCount > 0 : tab.indicator,
+    themeColor: tab.id === 'active'
+      ? colorForSkill(activeSkillId.value)
+      : tab.id === 'routine'
+        ? colorForSkill(routineSkillId.value)
+        : null,
+  }))
+)
+
+function skillIdForTask(taskId: string | null): SkillId | null {
+  if (!taskId) return null
+  return getTaskById(taskId)?.skillId ?? null
+}
+
+function colorForSkill(skillId: SkillId | null): string | null {
+  return skillId ? SKILLS[skillId]?.color ?? null : null
+}
 </script>
 
 <style scoped>
@@ -87,6 +123,28 @@ const tabs = [
 }
 .em-sidebar-btn-active::before {
   content: none;
+}
+
+.em-sidebar-btn-themed {
+  border-color: color-mix(in srgb, var(--tab-theme-color), transparent 70%);
+}
+
+.em-sidebar-btn-themed.em-sidebar-btn-active {
+  color: color-mix(in srgb, var(--tab-theme-color), white 42%);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--tab-theme-color), transparent 78%), transparent),
+    var(--color-bg-card);
+  box-shadow: inset 3px 0 0 var(--tab-theme-color);
+}
+
+.em-sidebar-material {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  margin-left: auto;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--tab-theme-color);
+  box-shadow: 4px 0 0 color-mix(in srgb, var(--tab-theme-color), black 28%);
 }
 
 .em-sidebar-indicator {

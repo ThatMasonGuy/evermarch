@@ -23,8 +23,10 @@ This is not pixel art. The target is chunky, voxel/block-adjacent, tactile, and 
    - The active lane is the hero surface. It should feel like the player is performing a concrete action, not just pressing a generic button.
    - Use tool sprites, pressed states, rhythm feedback, short material bursts, and action-specific copy: Mine, Chop, Fish, Kindle, Cook, Forge, Grow, Shape, Craft, Bind.
 
-3. **Idle lanes feel like routes and machines**
-   - Routine and background lanes should read like automated routes through the world.
+3. **Core play surfaces stay distinct**
+   - Active should become the tactile play surface for concrete verbs like mining, chopping, fishing, forging, and crafting.
+   - Routine should read like the player's chosen automated route through the world.
+   - Farming should be a field-based background loop with short planting/harvesting decisions around long growth timers.
    - The player should quickly understand what is being produced, what is blocked, and what material chain it feeds.
 
 4. **Melvor-like density, block-world clarity**
@@ -88,17 +90,31 @@ The current active lane should evolve from a tool-focused scene into concrete ac
 
 For mining specifically, the target is a face-on block grid where players break every visible block to dig one meter deeper, find ore veins, and occasionally discover active-only boosts like TNT.
 
+The selected Active skill should visually overtake the Active page and its sidebar button. Mining should bring stone, ore, depth, cracks, and tool materials into the page. Woodcutting should bring trees, logs, leaf blocks, and forest trim. This should happen through lightweight themed classes first, then through real asset trim as the asset library grows.
+
 ### Skill Questlines
 
 Every skill should eventually have a staged questline that teaches its loop, gives concrete goals, and rewards progress in ways that make the next stretch smoother. The canonical design is `docs/design/skill-questlines.md`.
+
+The Quests sidebar item is the player-direction surface. The first implementation can generate next-step cards from current levels, task actions, and Farming field state before persistent questlines and reward claiming exist.
 
 ### Routine Lane
 
 Routine is the player's chosen automated work route. It should make output rate, mastery, and next upgrade obvious.
 
-### Background Lane
+Because Routine now has its own page, it should own the Routine skill-routing board, while Active owns active assignment/play and Farming remains on its own field page.
 
-Background is slower, steadier world growth. Farming, long crafts, or future settlement systems should feel like they continue while the player focuses elsewhere.
+Correction to the interaction model: Routine should not use tiny "set lane" buttons. The whole skill card is the selector for the Routine route. Once selected, that skill should visually overtake the Routine page and the Routine sidebar button in the same way Active does: Woodcutting makes Routine feel wooded, Mining makes it stone/ore themed, Fishing makes it water/shore themed, and so on.
+
+Active and Routine are separate channels. Routine should not offer Active assignment controls, and Active should not depend on the Routine skill grid.
+
+### Farming Background
+
+Farming is the committed background prototype and is specified in `docs/design/background-farming.md`.
+
+Farming should not run as a passive crop-per-tick lane. It should be a field system where the player plants a crop, waits 6-12 hours, gets a ready notification, returns to collect a batch, then plants again or replants. Leveling Farming unlocks more fields so more crops can grow at the same time.
+
+Future long-running settlement or crafting systems can borrow the timestamp-based pattern, but they should get their own surface when the workflow deserves it.
 
 ### Inventory
 

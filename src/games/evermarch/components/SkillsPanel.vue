@@ -17,14 +17,17 @@
         }"
       >
         <div class="skill-icon" :style="{ background: skill.def.color + '18', color: skill.def.color }">
-          <Pickaxe v-if="skill.def.icon === 'Pickaxe'" :size="18" />
-          <TreePine v-else-if="skill.def.icon === 'TreePine'" :size="18" />
-          <Fish v-else-if="skill.def.icon === 'Fish'" :size="18" />
-          <Sprout v-else-if="skill.def.icon === 'Sprout'" :size="18" />
-          <FlameKindling v-else-if="skill.def.icon === 'FlameKindling'" :size="18" />
-          <Hammer v-else-if="skill.def.icon === 'Hammer'" :size="18" />
-          <Swords v-else-if="skill.def.icon === 'Swords'" :size="18" />
-          <BookOpen v-else :size="18" />
+          <img v-if="skill.sprite" :src="skill.sprite" alt="" class="skill-sprite" />
+          <template v-else>
+            <Pickaxe v-if="skill.def.icon === 'Pickaxe'" :size="18" />
+            <TreePine v-else-if="skill.def.icon === 'TreePine'" :size="18" />
+            <Fish v-else-if="skill.def.icon === 'Fish'" :size="18" />
+            <Sprout v-else-if="skill.def.icon === 'Sprout'" :size="18" />
+            <FlameKindling v-else-if="skill.def.icon === 'FlameKindling'" :size="18" />
+            <Hammer v-else-if="skill.def.icon === 'Hammer'" :size="18" />
+            <Swords v-else-if="skill.def.icon === 'Swords'" :size="18" />
+            <BookOpen v-else :size="18" />
+          </template>
         </div>
         <div class="skill-info">
           <div class="skill-title-row">
@@ -116,6 +119,7 @@ import { BookOpen, Clock, Fish, FlameKindling, Hammer, MousePointerClick, Pickax
 import { useGameStore } from '../stores/gameStore'
 import { SKILL_LIST, type LaneType, type SkillId } from '../data/skills'
 import { getTaskById, getTasksForSkill, type TaskDefinition } from '../data/tasks'
+import { spriteForSkill } from '../assets/visualAssets'
 
 const store = useGameStore()
 
@@ -131,6 +135,7 @@ const skillData = computed(() =>
     return {
       id: def.id,
       def,
+      sprite: spriteForSkill(def.id),
       level,
       progress: store.getSkillProgress(def.id),
       currentTaskLabel: currentTask ? `Current: ${taskChoiceLabel(currentTask)}` : 'No task unlocked',
@@ -235,7 +240,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   gap: 10px;
   padding: 12px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--color-border);
   background: var(--color-bg-card);
   transition: all var(--transition-fast);
   position: relative;
@@ -262,10 +267,18 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   width: 34px;
   height: 34px;
   border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-hover);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.skill-sprite {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.22));
 }
 
 .skill-info {
@@ -452,7 +465,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   letter-spacing: 0.5px;
   text-transform: uppercase;
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--color-accent-glow);
   color: var(--color-accent-light);
 }

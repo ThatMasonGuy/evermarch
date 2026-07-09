@@ -266,7 +266,11 @@ function handleCreateSave() {
 .save-page {
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--color-bg-deep);
+  background:
+    linear-gradient(rgba(246, 211, 107, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(246, 211, 107, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, #172418 0%, var(--color-bg-deep) 38%, #100b07 100%);
+  background-size: 32px 32px, 32px 32px, auto;
   color: var(--color-text-primary);
   display: flex;
   flex-direction: column;
@@ -277,9 +281,9 @@ function handleCreateSave() {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(6, 13, 10, 0.9);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(180deg, var(--color-bg-elevated), var(--color-bg-surface));
+  border-bottom: 2px solid var(--em-block-border);
+  box-shadow: 0 3px 0 var(--em-block-shadow);
 }
 .save-nav-inner {
   max-width: 1000px;
@@ -324,12 +328,30 @@ function handleCreateSave() {
   flex-direction: column;
   gap: 32px;
 }
-.save-header { text-align: center; }
+.save-header {
+  position: relative;
+  text-align: center;
+  padding-bottom: 26px;
+}
+
+.save-header::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: min(360px, 90%);
+  height: 18px;
+  transform: translateX(-50%);
+  background:
+    linear-gradient(90deg, var(--em-grass) 0 25%, var(--em-wood) 25% 50%, var(--em-stone) 50% 75%, var(--em-water) 75% 100%);
+  border: 2px solid var(--em-block-border);
+  box-shadow: 0 4px 0 var(--em-block-shadow);
+}
 .save-title {
   font-family: var(--font-display);
   font-size: clamp(28px, 6vw, 40px);
   font-weight: 800;
-  animation: glow-pulse-text 4s ease-in-out infinite;
+  text-shadow: 0 3px 0 var(--em-block-shadow);
 }
 @keyframes glow-pulse-text {
   0%, 100% { text-shadow: 0 0 8px var(--color-accent-glow); }
@@ -352,13 +374,14 @@ function handleCreateSave() {
   position: relative;
   padding: 20px;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--em-block-border);
   background: var(--color-bg-card);
   cursor: pointer;
   transition: all var(--transition-base);
   display: flex;
   flex-direction: column;
   gap: 14px;
+  box-shadow: 0 6px 0 var(--em-block-shadow);
 }
 .save-card:hover {
   border-color: var(--color-border-hover);
@@ -366,7 +389,7 @@ function handleCreateSave() {
 }
 .save-card-selected {
   border-color: var(--color-accent);
-  box-shadow: 0 0 16px var(--color-accent-glow), inset 0 0 0 1px var(--color-accent-glow);
+  box-shadow: 0 6px 0 var(--em-block-shadow), inset 0 0 0 1px var(--color-accent-glow);
 }
 
 .save-card-header {
@@ -387,7 +410,7 @@ function handleCreateSave() {
   letter-spacing: 1px;
   text-transform: uppercase;
   padding: 3px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--color-accent-glow);
   color: var(--color-accent-light);
 }
@@ -501,10 +524,15 @@ function handleCreateSave() {
   border: none;
   cursor: pointer;
   transition: all var(--transition-base);
+  box-shadow: 0 4px 0 var(--em-block-shadow);
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-accent { background: var(--color-accent); color: #fff; }
-.btn-accent:hover:not(:disabled) { box-shadow: 0 0 20px var(--color-accent-glow-strong); }
+.btn-accent { background: var(--color-accent); color: #1b130b; }
+.btn-accent:hover:not(:disabled) { box-shadow: 0 4px 0 var(--em-block-shadow), 0 0 0 2px rgba(246, 211, 107, 0.14); }
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--em-block-shadow);
+}
 .btn-ghost {
   background: transparent;
   color: var(--color-text-secondary);
@@ -531,7 +559,7 @@ function handleCreateSave() {
 }
 .modal-panel {
   background: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--em-block-border);
   border-radius: var(--radius-xl);
   padding: 32px;
   width: 100%;

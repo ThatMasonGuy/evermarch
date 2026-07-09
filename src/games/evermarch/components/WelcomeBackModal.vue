@@ -445,7 +445,7 @@ function formatDuration(ms: number): string {
 }
 
 .welcome-close:hover {
-  background: rgba(52, 211, 153, 0.18);
+  background: var(--color-accent-glow);
 }
 
 .welcome-modal-enter-active,

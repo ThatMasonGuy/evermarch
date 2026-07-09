@@ -87,7 +87,7 @@ function formatNumber(value: number): string {
   gap: 5px;
   padding: 5px 9px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(52, 211, 153, 0.35);
+  border: 1px solid var(--color-border-hover);
   background: rgba(6, 13, 10, 0.9);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   color: var(--color-text-secondary);

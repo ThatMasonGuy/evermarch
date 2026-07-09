@@ -80,7 +80,8 @@
             @click="selectItem(item.id)"
           >
             <span class="inv-item-icon" :class="`inv-item-icon-${item.category}`">
-              <component :is="iconFor(item.icon)" :size="18" />
+              <img v-if="item.sprite" :src="item.sprite" alt="" class="inv-item-sprite" />
+              <component v-else :is="iconFor(item.icon)" :size="18" />
             </span>
             <span class="inv-item-main">
               <span class="inv-item-title">
@@ -105,7 +106,8 @@
       <aside v-if="selectedItem" class="inv-detail" :data-resource-id="selectedItem.id">
         <header class="inv-detail-header">
           <div class="inv-detail-icon" :class="`inv-item-icon-${selectedItem.category}`">
-            <component :is="iconFor(selectedItem.icon)" :size="22" />
+            <img v-if="selectedItem.sprite" :src="selectedItem.sprite" alt="" class="inv-detail-sprite" />
+            <component v-else :is="iconFor(selectedItem.icon)" :size="22" />
           </div>
           <div class="inv-detail-title">
             <h3>{{ selectedItem.name }}</h3>
@@ -327,6 +329,7 @@ import { useGameStore, type ItemStats } from '../stores/gameStore'
 import { getResourceDefinition, getResourceName } from '../data/resources'
 import { ALL_TASKS, type TaskDefinition } from '../data/tasks'
 import { SKILLS } from '../data/skills'
+import { spriteForResource } from '../assets/visualAssets'
 
 type DetailTab = 'info' | 'stats' | 'upgrade'
 type SortMode = 'name' | 'value' | 'count' | 'recent'
@@ -356,6 +359,7 @@ interface InventoryItem {
   id: string
   name: string
   icon: string
+  sprite: string | null
   count: number
   category: string
   categoryLabel: string
@@ -435,6 +439,7 @@ const ownedItems = computed(() => {
       id,
       name: def.name,
       icon: def.icon,
+      sprite: spriteForResource(id, def.category),
       count,
       category: def.category,
       categoryLabel: categoryLabel(def.category),
@@ -873,9 +878,10 @@ function formatTimestamp(value: number | null): string {
 .inv-list-pane,
 .inv-detail {
   min-width: 0;
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--em-block-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-card);
+  box-shadow: 0 5px 0 var(--em-block-shadow);
 }
 
 .inv-list-pane {
@@ -915,7 +921,7 @@ function formatTimestamp(value: number | null): string {
   gap: 7px;
   padding: 9px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--color-border);
   background: var(--color-bg-surface);
   color: var(--color-text-secondary);
   font-family: var(--font-body);
@@ -942,8 +948,10 @@ function formatTimestamp(value: number | null): string {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(52, 211, 153, 0.16);
-  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid var(--color-border-hover);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.08)),
+    var(--color-bg-card);
   color: var(--color-accent-light);
 }
 
@@ -955,6 +963,23 @@ function formatTimestamp(value: number | null): string {
 .inv-detail-icon {
   width: 42px;
   height: 42px;
+}
+
+.inv-item-sprite,
+.inv-detail-sprite {
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.22));
+}
+
+.inv-item-sprite {
+  width: 28px;
+  height: 28px;
+}
+
+.inv-detail-sprite {
+  width: 34px;
+  height: 34px;
 }
 
 .inv-item-icon-ore,
@@ -1128,8 +1153,8 @@ function formatTimestamp(value: number | null): string {
   gap: 8px;
   padding: 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(52, 211, 153, 0.22);
-  background: rgba(52, 211, 153, 0.05);
+  border: 1px solid var(--color-border-hover);
+  background: var(--color-accent-glow);
 }
 
 .inv-sell-heading,

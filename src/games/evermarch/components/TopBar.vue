@@ -77,8 +77,9 @@ const store = useGameStore()
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  background: rgba(6, 13, 10, 0.95);
-  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(180deg, var(--color-bg-elevated), var(--color-bg-surface));
+  border-bottom: 2px solid var(--em-block-border);
+  box-shadow: 0 3px 0 var(--em-block-shadow);
   z-index: 100;
   gap: 12px;
   flex-shrink: 0;
@@ -97,6 +98,7 @@ const store = useGameStore()
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   color: var(--color-text-muted);
   text-decoration: none;
   transition: all var(--transition-fast);
@@ -104,6 +106,7 @@ const store = useGameStore()
 .em-topbar-back:hover {
   color: var(--color-accent-light);
   background: var(--color-bg-card);
+  border-color: var(--color-border);
 }
 
 .em-topbar-brand {
@@ -133,6 +136,11 @@ const store = useGameStore()
   display: flex;
   align-items: center;
   gap: 5px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.12);
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-secondary);
@@ -152,8 +160,8 @@ const store = useGameStore()
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
-  background: none;
-  border: none;
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--color-border);
   color: var(--color-text-muted);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -161,6 +169,7 @@ const store = useGameStore()
 .em-topbar-btn:hover {
   color: var(--color-accent-light);
   background: var(--color-bg-card);
+  border-color: var(--color-border-hover);
 }
 .em-topbar-btn:disabled {
   opacity: 0.55;

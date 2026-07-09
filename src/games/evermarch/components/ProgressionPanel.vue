@@ -493,13 +493,13 @@ function formatDuration(ms: number): string {
 .progression-bar {
   height: 4px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--color-bg-elevated);
 }
 
 .progression-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
 }
 
@@ -710,13 +710,13 @@ function formatDuration(ms: number): string {
 .progression-task-mastery-bar {
   height: 4px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--color-bg-elevated);
 }
 
 .progression-task-mastery-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(90deg, #d97706, #fde68a);
 }
 

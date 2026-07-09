@@ -303,7 +303,7 @@ function handleReset() {
   transition: all var(--transition-fast);
 }
 .save-btn:hover:not(:disabled) {
-  background: rgba(52, 211, 153, 0.2);
+  background: var(--color-accent-glow);
 }
 .save-btn:disabled {
   opacity: 0.5;

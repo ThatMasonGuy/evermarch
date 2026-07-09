@@ -11,6 +11,26 @@
         <h2 class="active-title active-title-empty" v-else>No Active Task</h2>
       </div>
 
+      <div v-if="task" class="active-voxel-scene" :class="`active-voxel-scene-${task.skillId}`">
+        <div class="active-voxel-sky">
+          <span class="active-voxel-sun"></span>
+          <span class="active-voxel-cloud active-voxel-cloud-a"></span>
+          <span class="active-voxel-cloud active-voxel-cloud-b"></span>
+        </div>
+        <div class="active-voxel-focus">
+          <img v-if="materialSprite" :src="materialSprite" alt="" class="active-voxel-material" />
+          <img v-if="actionSprite" :src="actionSprite" alt="" class="active-voxel-tool" />
+        </div>
+        <div class="active-voxel-ground" aria-hidden="true">
+          <span
+            v-for="index in 8"
+            :key="index"
+            class="active-voxel-block"
+            :style="{ backgroundImage: `url(${sceneTileSprite})` }"
+          ></span>
+        </div>
+      </div>
+
       <!-- Skill Level + XP -->
       <div class="active-meta" v-if="task && skillDef">
         <div class="active-badge-row">
@@ -86,13 +106,18 @@
         @mouseleave="isPressed = false"
         @click="onAction"
       >
-        <Pickaxe v-if="task.skillId === 'mining'" :size="20" />
-        <TreePine v-else-if="task.skillId === 'woodcutting'" :size="20" />
-        <Fish v-else-if="task.skillId === 'fishing'" :size="20" />
-        <FlameKindling v-else-if="task.skillId === 'firemaking' || task.skillId === 'cooking'" :size="20" />
-        <Hammer v-else-if="task.skillId === 'smithing' || task.skillId === 'fletching' || task.skillId === 'crafting'" :size="20" />
-        <BookOpen v-else-if="task.skillId === 'runecrafting'" :size="20" />
-        <Sprout v-else :size="20" />
+        <span v-if="actionSprite" class="active-action-sprite">
+          <img :src="actionSprite" alt="" />
+        </span>
+        <template v-else>
+          <Pickaxe v-if="task.skillId === 'mining'" :size="20" />
+          <TreePine v-else-if="task.skillId === 'woodcutting'" :size="20" />
+          <Fish v-else-if="task.skillId === 'fishing'" :size="20" />
+          <FlameKindling v-else-if="task.skillId === 'firemaking' || task.skillId === 'cooking'" :size="20" />
+          <Hammer v-else-if="task.skillId === 'smithing' || task.skillId === 'fletching' || task.skillId === 'crafting'" :size="20" />
+          <BookOpen v-else-if="task.skillId === 'runecrafting'" :size="20" />
+          <Sprout v-else :size="20" />
+        </template>
         <span>{{ actionLabel }}</span>
       </button>
       <p class="active-blocked-hint" v-if="hasCostBlockers">
@@ -183,6 +208,7 @@ import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Lock, Pickaxe, Spr
 import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
+import { getResourceDefinition } from '../data/resources'
 import {
   ACTIVE_ONE_X_MIN_CLICKS_PER_SECOND,
   ACTIVE_PEAK_CLICKS_PER_SECOND,
@@ -192,6 +218,7 @@ import {
   performActiveAction,
 } from '../engine/gameEngine'
 import { formatCostReadiness, getCostReadiness, hasMissingCosts } from '../utils/taskCosts'
+import { TILE_SPRITES, spriteForResource, spriteForSkill } from '../assets/visualAssets'
 
 const store = useGameStore()
 const isPressed = ref(false)
@@ -214,6 +241,32 @@ const costLabel = computed(() => formatCostReadiness(costReadiness.value))
 const hasCostBlockers = computed(() => hasMissingCosts(costReadiness.value))
 const missingCostLabel = computed(() => {
   return formatCostReadiness(costReadiness.value.filter((cost) => !cost.ready))
+})
+const actionSprite = computed(() => task.value ? spriteForSkill(task.value.skillId) : null)
+const materialSprite = computed(() => {
+  const drop = task.value?.drops[0]
+  return drop ? spriteForResource(drop.resourceId, getResourceDefinition(drop.resourceId).category) : null
+})
+const sceneTileSprite = computed(() => {
+  switch (task.value?.skillId) {
+    case 'mining':
+    case 'smithing':
+    case 'runecrafting':
+      return TILE_SPRITES.stoneCoal
+    case 'woodcutting':
+    case 'firemaking':
+    case 'fletching':
+      return TILE_SPRITES.trunkSide
+    case 'fishing':
+      return TILE_SPRITES.water
+    case 'farming':
+      return TILE_SPRITES.grassTop
+    case 'cooking':
+    case 'crafting':
+      return TILE_SPRITES.wood
+    default:
+      return TILE_SPRITES.dirtGrass
+  }
 })
 const actionButtonTitle = computed(() => {
   if (!hasCostBlockers.value) return ''
@@ -392,16 +445,13 @@ function formatRate(value: number): string {
   gap: 14px;
   padding: 14px;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-accent);
-  background: linear-gradient(
-    180deg,
-    rgba(52, 211, 153, 0.06) 0%,
-    var(--color-bg-card) 40%,
-    var(--color-bg-card) 100%
-  );
+  border: 2px solid var(--em-block-border);
+  background:
+    linear-gradient(180deg, rgba(142, 202, 230, 0.08) 0%, transparent 34%),
+    var(--color-bg-card);
   box-shadow:
-    0 0 24px rgba(52, 211, 153, 0.08),
-    inset 0 1px 0 rgba(52, 211, 153, 0.1);
+    0 8px 0 var(--em-block-shadow),
+    inset 0 2px 0 var(--em-block-highlight);
   position: relative;
   overflow: hidden;
 }
@@ -452,8 +502,9 @@ function formatRate(value: number): string {
   align-items: center;
   gap: 6px;
   padding: 3px 12px;
-  border-radius: 999px;
-  background: rgba(52, 211, 153, 0.12);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-surface);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0;
@@ -485,6 +536,116 @@ function formatRate(value: number): string {
 
 .active-title-empty {
   color: var(--color-text-muted);
+}
+
+.active-voxel-scene {
+  width: min(100%, 360px);
+  height: 112px;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--em-block-border);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--em-sky) 0%, var(--em-sky-light) 68%, var(--em-dirt) 69%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+}
+
+.active-voxel-scene-mining,
+.active-voxel-scene-smithing,
+.active-voxel-scene-runecrafting {
+  background: linear-gradient(180deg, #5f7180 0%, #91a5ae 56%, #3f4642 57%);
+}
+
+.active-voxel-scene-fishing {
+  background: linear-gradient(180deg, var(--em-sky) 0%, var(--em-sky-light) 48%, var(--em-water) 49%);
+}
+
+.active-voxel-sky {
+  position: absolute;
+  inset: 0 0 34px;
+}
+
+.active-voxel-sun {
+  position: absolute;
+  top: 12px;
+  right: 26px;
+  width: 18px;
+  height: 18px;
+  background: #f6d36b;
+  border: 2px solid rgba(104, 76, 18, 0.28);
+  box-shadow: inset -3px -3px 0 rgba(125, 87, 20, 0.18);
+}
+
+.active-voxel-cloud {
+  position: absolute;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow:
+    12px 0 0 rgba(255, 255, 255, 0.74),
+    24px 0 0 rgba(255, 255, 255, 0.74),
+    12px -8px 0 rgba(255, 255, 255, 0.68);
+}
+
+.active-voxel-cloud-a {
+  top: 30px;
+  left: 28px;
+  width: 12px;
+}
+
+.active-voxel-cloud-b {
+  top: 18px;
+  left: 128px;
+  width: 10px;
+  opacity: 0.58;
+}
+
+.active-voxel-focus {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  width: 122px;
+  height: 72px;
+  transform: translateX(-50%);
+}
+
+.active-voxel-material,
+.active-voxel-tool {
+  position: absolute;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.24));
+}
+
+.active-voxel-material {
+  left: 5px;
+  bottom: 0;
+  width: 58px;
+  height: 58px;
+}
+
+.active-voxel-tool {
+  right: 4px;
+  top: 3px;
+  width: 60px;
+  height: 60px;
+  transform: rotate(-16deg);
+}
+
+.active-voxel-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  height: 34px;
+}
+
+.active-voxel-block {
+  min-width: 0;
+  background-repeat: repeat;
+  background-size: 34px 34px;
+  border-top: 2px solid rgba(255, 255, 255, 0.16);
 }
 
 .active-meta {
@@ -542,14 +703,14 @@ function formatRate(value: number): string {
 .active-xp-bar {
   height: 6px;
   background: var(--color-bg-elevated);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .active-xp-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
-  border-radius: 3px;
+  background: linear-gradient(90deg, var(--em-grass-dark), var(--em-grass));
+  border-radius: var(--radius-sm);
   transition: width 0.3s ease;
 }
 
@@ -623,15 +784,15 @@ function formatRate(value: number): string {
 
 .active-pace-bar {
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--color-bg-elevated);
   overflow: hidden;
 }
 
 .active-pace-fill {
   height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #fbbf24, var(--color-accent));
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--em-gold), var(--em-grass));
   transition: width 0.16s ease;
 }
 
@@ -650,13 +811,13 @@ function formatRate(value: number): string {
   min-height: 44px;
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-accent);
+  border: 2px solid var(--em-block-border);
   background: linear-gradient(
     180deg,
-    rgba(52, 211, 153, 0.15) 0%,
-    rgba(52, 211, 153, 0.06) 100%
+    rgba(139, 195, 74, 0.22) 0%,
+    rgba(79, 159, 69, 0.18) 100%
   );
-  color: var(--color-accent-light);
+  color: var(--color-text-primary);
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
@@ -666,26 +827,41 @@ function formatRate(value: number): string {
   transition: all 0.15s ease;
   user-select: none;
   -webkit-user-select: none;
+  box-shadow: 0 5px 0 var(--em-block-shadow);
 }
 
 .active-action-btn:hover {
   background: linear-gradient(
     180deg,
-    rgba(52, 211, 153, 0.25) 0%,
-    rgba(52, 211, 153, 0.1) 100%
+    rgba(139, 195, 74, 0.32) 0%,
+    rgba(79, 159, 69, 0.22) 100%
   );
-  box-shadow: 0 0 20px rgba(52, 211, 153, 0.2);
+  box-shadow: 0 5px 0 var(--em-block-shadow), 0 0 0 2px rgba(246, 211, 107, 0.12);
 }
 
 .active-action-btn:active,
 .active-action-btn-pressed {
-  transform: scale(0.97);
+  transform: translateY(3px);
   background: linear-gradient(
     180deg,
-    rgba(52, 211, 153, 0.3) 0%,
-    rgba(52, 211, 153, 0.12) 100%
+    rgba(139, 195, 74, 0.38) 0%,
+    rgba(79, 159, 69, 0.26) 100%
   );
-  box-shadow: 0 0 24px rgba(52, 211, 153, 0.3);
+  box-shadow: 0 2px 0 var(--em-block-shadow);
+}
+
+.active-action-sprite {
+  width: 25px;
+  height: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.active-action-sprite img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .active-action-btn-blocked {
@@ -766,8 +942,8 @@ function formatRate(value: number): string {
   gap: 4px;
   padding: 4px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(52, 211, 153, 0.45);
-  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid var(--color-border-hover);
+  background: var(--color-bg-surface);
   color: var(--color-accent-light);
   font-size: 11px;
   font-weight: 700;

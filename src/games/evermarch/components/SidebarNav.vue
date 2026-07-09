@@ -42,8 +42,10 @@ const tabs = [
 
 <style scoped>
 .em-sidebar {
-  background: var(--color-bg-surface);
-  border-right: 1px solid var(--color-border);
+  background:
+    linear-gradient(180deg, rgba(142, 202, 230, 0.04), transparent 130px),
+    var(--color-bg-surface);
+  border-right: 2px solid var(--em-block-border);
   overflow-y: auto;
   flex-shrink: 0;
 }
@@ -61,8 +63,8 @@ const tabs = [
   gap: 10px;
   padding: 10px 14px;
   border-radius: var(--radius-md);
-  border: none;
-  background: none;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--color-text-secondary);
   font-family: var(--font-body);
   font-size: 13px;
@@ -74,27 +76,23 @@ const tabs = [
 }
 .em-sidebar-btn:hover {
   background: var(--color-bg-card);
+  border-color: var(--color-border);
   color: var(--color-text-primary);
 }
 .em-sidebar-btn-active {
+  border-color: var(--color-border-hover);
   background: var(--color-accent-glow);
   color: var(--color-accent-light);
+  box-shadow: inset 3px 0 0 var(--color-accent);
 }
 .em-sidebar-btn-active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--color-accent);
+  content: none;
 }
 
 .em-sidebar-indicator {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--color-accent);
   margin-left: auto;
   animation: glow-pulse 2s ease-in-out infinite;

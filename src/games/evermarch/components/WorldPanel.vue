@@ -373,7 +373,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .world-lane-card-active {
-  border-color: rgba(52, 211, 153, 0.55);
+  border-color: var(--color-border-hover);
 }
 
 .world-lane-card-idle {
@@ -447,14 +447,14 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 .world-route-bar {
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--color-bg-elevated);
 }
 
 .world-route-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
 }
 

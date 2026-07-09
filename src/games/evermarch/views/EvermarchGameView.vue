@@ -255,7 +255,11 @@ async function handleBackup(): Promise<boolean> {
 .em-app {
   height: 100vh;
   height: 100dvh;
-  background: var(--color-bg-deep);
+  background:
+    linear-gradient(rgba(246, 211, 107, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(246, 211, 107, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, #171c16 0%, var(--color-bg-deep) 34%, #100b07 100%);
+  background-size: 32px 32px, 32px 32px, auto;
   color: var(--color-text-primary);
   display: flex;
   flex-direction: column;
@@ -269,6 +273,7 @@ async function handleBackup(): Promise<boolean> {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  border-top: 2px solid rgba(255, 255, 255, 0.04);
 }
 
 .em-layout-log-collapsed {
@@ -281,6 +286,9 @@ async function handleBackup(): Promise<boolean> {
   min-width: 0;
   min-height: 0;
   padding: 14px 16px;
+  background:
+    linear-gradient(180deg, rgba(142, 202, 230, 0.035), transparent 180px),
+    rgba(0, 0, 0, 0.08);
 }
 
 /* ── Lanes View ──────────────────────────────────────────── */
@@ -306,6 +314,9 @@ async function handleBackup(): Promise<boolean> {
   gap: 12px;
   padding: 80px 24px;
   text-align: center;
+  border: 2px dashed var(--color-border-hover);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
 }
 
 .em-placeholder-icon {

@@ -281,12 +281,13 @@ function taskMasteryLabel(taskDef: TaskDefinition): string {
   min-width: 0;
   padding: 12px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--em-block-border);
   background: var(--color-bg-card);
   display: flex;
   flex-direction: column;
   gap: 8px;
   transition: all var(--transition-fast);
+  box-shadow: 0 5px 0 var(--em-block-shadow);
 }
 .passive-panel:hover {
   border-color: var(--color-border-hover);
@@ -318,7 +319,7 @@ function taskMasteryLabel(taskDef: TaskDefinition): string {
 .passive-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: 0;
 }
 .passive-dot-idle {
   background: #fbbf24;
@@ -351,7 +352,7 @@ function taskMasteryLabel(taskDef: TaskDefinition): string {
 .passive-icon-ring {
   width: 38px;
   height: 38px;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   border: 2px solid var(--color-border-hover);
   display: flex;
   flex-direction: column;
@@ -436,13 +437,13 @@ function taskMasteryLabel(taskDef: TaskDefinition): string {
 .passive-progress-bar {
   height: 5px;
   background: var(--color-bg-elevated);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .passive-progress-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   transition: width 0.1s linear;
 }
 .passive-fill-idle {
@@ -455,13 +456,13 @@ function taskMasteryLabel(taskDef: TaskDefinition): string {
 .passive-xp-bar {
   height: 3px;
   background: var(--color-bg-elevated);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 .passive-xp-fill {
   height: 100%;
   background: var(--color-accent);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   transition: width 0.3s ease;
 }
 
@@ -547,8 +548,8 @@ function taskMasteryLabel(taskDef: TaskDefinition): string {
   gap: 4px;
   padding: 3px 7px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(52, 211, 153, 0.4);
-  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid var(--color-border-hover);
+  background: var(--color-bg-surface);
   color: var(--color-accent-light);
   font-family: var(--font-body);
   font-size: 10px;

@@ -9,7 +9,22 @@
     </div>
 
     <div class="active-workbench">
-      <section class="active-core">
+      <section class="active-core" :class="{ 'active-core-mining': task?.skillId === 'mining' }">
+        <ActiveMiningPanel
+          v-if="task && task.skillId === 'mining'"
+          :task="task"
+          :skill-level="skillLevel"
+          :skill-progress="skillProgress"
+          :xp-to-next="xpToNext"
+          :mastery-level="masteryLevel"
+          :is-task-mastered="isTaskMastered"
+          :active-pace-label="activePaceLabel"
+          :active-pace-percent="activePacePercent"
+          :active-progress-label="activeProgressLabel"
+          :active-target-label="activeTargetLabel"
+        />
+
+        <template v-else>
         <div class="active-header">
           <h2 class="active-title" v-if="task">{{ task.name }}</h2>
           <h2 class="active-title active-title-empty" v-else>No Active Task</h2>
@@ -128,6 +143,7 @@
         <div v-if="!task" class="active-empty">
           <p>Select an unlocked active skill to begin.</p>
         </div>
+        </template>
       </section>
 
       <aside class="active-task-select" v-if="selectableSkills.length > 0">
@@ -192,6 +208,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Lock, Pickaxe, Sprout, TreePine, Trophy } from 'lucide-vue-next'
+import ActiveMiningPanel from './ActiveMiningPanel.vue'
 import SkillSelectorRail from './SkillSelectorRail.vue'
 import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
@@ -486,6 +503,14 @@ function formatRate(value: number): string {
     inset 0 2px 0 var(--em-block-highlight),
     inset 0 -5px 0 rgba(0, 0, 0, 0.16);
   overflow: hidden;
+}
+
+.active-core-mining {
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.16);
 }
 
 .active-header {

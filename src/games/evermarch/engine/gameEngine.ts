@@ -15,6 +15,7 @@ import { getResourceDefinition, getResourceName } from '../data/resources'
 import { saveLocal } from './saveSystem'
 import { SKILLS, type LaneType, type SkillId } from '../data/skills'
 import { syncGlobalStatsForCurrentUser } from './globalStats'
+import { getActiveMiningClickDamageMs, type ActiveMiningBlockState } from './activeMining'
 
 const TICK_INTERVAL = 100 // ms — game ticks 10 times per second
 const AUTO_SAVE_INTERVAL = 30_000 // auto-save every 30 seconds
@@ -309,6 +310,104 @@ export function performActiveAction() {
       activeSavedProgressMs = 0
       break
     }
+  }
+}
+
+export function performActiveMiningBlock(blockId: string) {
+  const store = useGameStore()
+  const lane = store.lanes.active
+  if (!lane.taskId) return
+
+  const task = getTaskById(lane.taskId)
+  if (!task || task.skillId !== 'mining') {
+    performActiveAction()
+    return
+  }
+
+  const skillLevel = store.getSkillLevel(task.skillId)
+  if (skillLevel < task.levelRequired) return
+
+  store.ensureActiveMiningState(task.id)
+
+  const cadence = getActiveClickCadence(task.id, Date.now())
+  store.recordActiveCadence({
+    multiplier: cadence.multiplier,
+    ratio: cadence.multiplier / MAX_ACTIVE_SPEED_MULTIPLIER,
+    progressMs: cadence.progressMs,
+    clickGapMs: cadence.clickGapMs,
+  })
+  const recordedWorkMs = cadence.activeWorkMs > 0 ? cadence.activeWorkMs : ACTIVE_TARGET_CLICK_INTERVAL_MS
+  store.recordActiveClick(task.id, task.skillId, recordedWorkMs)
+
+  if (!canPayCosts(task, store, 1)) {
+    store.addLog(`Need ${formatCosts(task.costs ?? [], 1)} for ${task.name}`, 'system')
+    return
+  }
+
+  const damageMs = getActiveMiningClickDamageMs(task, cadence)
+  const result = store.damageActiveMiningBlock(task.id, blockId, damageMs)
+
+  if (!result.brokenBlock) return
+
+  grantActiveMiningBlockReward(
+    task,
+    store,
+    result.brokenBlock,
+    result.layerCleared,
+    result.nextDepthMeters,
+    Math.max(0, result.damageAppliedMs - recordedWorkMs),
+  )
+}
+
+function grantActiveMiningBlockReward(
+  task: TaskDefinition,
+  store: ReturnType<typeof useGameStore>,
+  block: ActiveMiningBlockState,
+  layerCleared: boolean,
+  nextDepthMeters: number,
+  activeSavedMs: number,
+) {
+  const xp = Math.max(1, Math.round(task.xpPerAction * xpMultiplierForActiveMiningBlock(block)))
+
+  store.addXp(task.skillId, xp)
+  store.addTaskMasteryXp(task.id, xp)
+  store.recordTaskAction({
+    taskId: task.id,
+    skillId: task.skillId,
+    source: 'active',
+    laneType: 'active',
+    xp,
+    activeSavedMs,
+  })
+
+  for (const drop of block.drops) {
+    store.addItem(drop.resourceId, drop.amount)
+  }
+
+  if (block.kind !== 'stone' && block.kind !== 'gravel') {
+    const dropLabel = block.drops
+      .map((drop) => `+${drop.amount} ${getResourceName(drop.resourceId)}`)
+      .join(', ')
+    store.addLog(`Mining: ${dropLabel}`, 'gain')
+  }
+
+  if (layerCleared) {
+    store.addLog(`Mined down to ${nextDepthMeters}m.`, 'gain')
+  }
+}
+
+function xpMultiplierForActiveMiningBlock(block: ActiveMiningBlockState): number {
+  switch (block.kind) {
+    case 'target_ore':
+      return 0.8
+    case 'off_ore':
+    case 'coal':
+      return 0.45
+    case 'gravel':
+      return 0.16
+    case 'stone':
+    default:
+      return 0.18
   }
 }
 

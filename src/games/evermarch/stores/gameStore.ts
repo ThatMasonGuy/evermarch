@@ -18,6 +18,15 @@ import {
   taskMasteryProgressFraction,
   taskMasteryXpToNextLevel,
 } from '../data/taskMastery'
+import {
+  cloneActiveMiningState,
+  createDefaultActiveMiningState,
+  damageActiveMiningBlockState,
+  ensureActiveMiningState as ensureActiveMiningLayerState,
+  normalizeActiveMiningState,
+  type ActiveMiningDamageResult,
+  type ActiveMiningState,
+} from '../engine/activeMining'
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -202,6 +211,7 @@ export interface GameSaveData {
   taskMastery?: Record<string, TaskMasteryState>
   inventory: Record<string, number>
   gold: number
+  activeMining?: ActiveMiningState
   lanes: {
     active: { taskId: string | null }
     idle: { taskId: string | null; progress: number }
@@ -223,7 +233,7 @@ interface TaskActionStatsInput {
   activeSavedMs?: number
 }
 
-const SAVE_VERSION = 5
+const SAVE_VERSION = 6
 const STATS_VERSION = 3
 const ACTIVE_CLICK_SESSION_GAP_MS = 2_000
 const ACTIVE_SAVED_TIME_CAP_MULTIPLIER = 2
@@ -256,6 +266,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
   const inventory = ref<Record<string, number>>({})
   const gold = ref(0)
   const stats = ref<GameStats>(createDefaultStats())
+  const activeMining = ref<ActiveMiningState>(createDefaultActiveMiningState())
 
   const lanes = ref<Record<LaneType, LaneState>>({
     active: { type: 'active', taskId: getDefaultTaskIdForLane('active'), progress: 0 },
@@ -699,6 +710,47 @@ export const useGameStore = defineStore('evermarch-game', () => {
     activeCadence.value = createActiveCadenceState()
   }
 
+  function ensureActiveMiningState(taskId: string | null | undefined = lanes.value.active.taskId): ActiveMiningState {
+    const task = taskId ? getTaskById(taskId) : null
+    if (!task || task.skillId !== 'mining') return activeMining.value
+
+    activeMining.value = ensureActiveMiningLayerState(
+      activeMining.value,
+      task,
+      getSkillLevel('mining'),
+    )
+
+    return activeMining.value
+  }
+
+  function damageActiveMiningBlock(
+    taskId: string,
+    blockId: string,
+    damageMs: number,
+  ): ActiveMiningDamageResult {
+    const task = getTaskById(taskId)
+    if (!task || task.skillId !== 'mining') {
+      return {
+        state: activeMining.value,
+        brokenBlock: null,
+        layerCleared: false,
+        previousDepthMeters: activeMining.value.depthMeters,
+        nextDepthMeters: activeMining.value.depthMeters,
+        damageAppliedMs: 0,
+      }
+    }
+
+    const result = damageActiveMiningBlockState(
+      activeMining.value,
+      task,
+      getSkillLevel('mining'),
+      blockId,
+      damageMs,
+    )
+    activeMining.value = result.state
+    return result
+  }
+
   function recordItemConsumed(resourceId: string, amount: number) {
     if (amount <= 0) return
     ensureItemStats(resourceId).consumed += amount
@@ -843,6 +895,9 @@ export const useGameStore = defineStore('evermarch-game', () => {
     }
 
     const task = getTaskById(lane.taskId)
+    if (laneType === 'active' && task?.skillId === 'mining') {
+      ensureActiveMiningState(task.id)
+    }
     addLog(`Started ${task?.name ?? lane.taskId} (${laneType})`, 'system')
   }
 
@@ -1116,6 +1171,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
       taskMastery: cloneTaskMastery(taskMastery.value),
       inventory: { ...inventory.value },
       gold: gold.value,
+      activeMining: cloneActiveMiningState(activeMining.value),
       lanes: {
         active: { taskId: lanes.value.active.taskId },
         idle: { taskId: lanes.value.idle.taskId, progress: lanes.value.idle.progress },
@@ -1138,6 +1194,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     stats.value = normalizeStats(data.stats, inventory.value, playtime.value, gold.value)
     taskMastery.value = normalizeTaskMastery(data.taskMastery, stats.value)
     farmingPlots.value = normalizeFarmingPlots(data.farmingPlots)
+    activeMining.value = normalizeActiveMiningState(data.activeMining)
     lastActiveClickAt = null
     resetActiveCadence()
 
@@ -1167,6 +1224,13 @@ export const useGameStore = defineStore('evermarch-game', () => {
       }
     }
 
+    if (lanes.value.active.taskId) {
+      const activeTask = getTaskById(lanes.value.active.taskId)
+      if (activeTask?.skillId === 'mining') {
+        ensureActiveMiningState(activeTask.id)
+      }
+    }
+
     gameLoaded.value = true
   }
 
@@ -1180,6 +1244,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     inventory.value = {}
     stats.value = createDefaultStats()
     taskMastery.value = {}
+    activeMining.value = createDefaultActiveMiningState()
     skills.value = SKILL_LIST.map((s) => ({ id: s.id, xp: 0 }))
     lanes.value = {
       active: { type: 'active', taskId: getDefaultTaskIdForLane('active'), progress: 0 },
@@ -1193,6 +1258,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     toastCounter = 0
     lastActiveClickAt = null
     resetActiveCadence()
+    ensureActiveMiningState(lanes.value.active.taskId)
     gameLoaded.value = true
   }
 
@@ -1208,6 +1274,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     inventory,
     gold,
     stats,
+    activeMining,
     lanes,
     farmingPlots,
     activityLog,
@@ -1254,6 +1321,8 @@ export const useGameStore = defineStore('evermarch-game', () => {
     removeItem,
     addGold,
     sellItem,
+    ensureActiveMiningState,
+    damageActiveMiningBlock,
     setLaneTask,
     plantFarmingPlot,
     collectFarmingPlot,

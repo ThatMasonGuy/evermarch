@@ -51,6 +51,8 @@ const skillSprites: Record<SkillId, string> = {
 }
 
 const exactResourceSprites: Record<string, string> = {
+  stone: stoneTile,
+  gravel: dirtGrassTile,
   coal: oreCoalSprite,
   copper_ore: oreIronSprite,
   tin_ore: oreSilverSprite,

@@ -14,6 +14,8 @@ export interface ResourceDefinition {
 }
 
 export const RESOURCES: Record<ResourceId, ResourceDefinition> = {
+  stone: { id: 'stone', name: 'Stone', icon: 'Package', category: 'ore', sellValue: 1 },
+  gravel: { id: 'gravel', name: 'Gravel', icon: 'Package', category: 'misc', sellValue: 1 },
   copper_ore: { id: 'copper_ore', name: 'Copper Ore', icon: 'Gem', category: 'ore', sellValue: 2 },
   tin_ore: { id: 'tin_ore', name: 'Tin Ore', icon: 'Gem', category: 'ore', sellValue: 4 },
   iron_ore: { id: 'iron_ore', name: 'Iron Ore', icon: 'Gem', category: 'ore', sellValue: 10 },

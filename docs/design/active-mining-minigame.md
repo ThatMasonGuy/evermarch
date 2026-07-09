@@ -107,6 +107,88 @@ Depth is the active mining long-tail identity.
 
 Depth should feel like "how far I personally dug", not just mining XP.
 
+## Mining History Graph
+
+Evermarch should eventually show a history view for the days the player actively mined. This should look less like a normal line chart and more like a side-on mine shaft record: surface at the top, a small player marker near the entrance, and a stepped vertical shaft profile dropping through the ground with depth labels.
+
+Reference shape:
+
+```text
+surface ------------------------------------------------
+            |
+            |
+            |____ 100m
+                 |
+                 |
+                 |____ 160m
+                      |
+                      |____ 180m
+```
+
+The graph should answer:
+
+- Which days did I mine?
+- How deep did I get on each day?
+- Where did I hit meaningful depth milestones?
+- Which days had notable veins, TNT finds, rare blocks, or best-depth pushes?
+
+### View Concepts
+
+1. **Daily shaft profile**
+   - Each mined day can render as its own vertical shaft silhouette.
+   - The shaft shows the day's deepest depth and major turns/milestones.
+   - Labels like `70m`, `120m`, `180m` sit beside meaningful ledges or endpoints.
+
+2. **All-days strip**
+   - A horizontally scrollable timeline of mined days.
+   - Each day is a narrow shaft column or thumbnail.
+   - Selecting a day expands its detailed shaft profile.
+
+3. **Lifetime mine map**
+   - A larger composite view can show best-depth paths over time.
+   - It should still feel like a mine cross-section, not a generic analytics graph.
+
+### Data To Track
+
+Do not store every mined block forever just to draw history. Track compressed daily summaries.
+
+Likely daily summary shape:
+
+```ts
+interface ActiveMiningDailySummary {
+  localDate: string
+  metersDug: number
+  startDepthMeters: number
+  endDepthMeters: number
+  bestDepthMeters: number
+  shaftSegments: ActiveMiningShaftSegment[]
+  oreTotals: Record<string, number>
+  notableFinds: ActiveMiningNotableFind[]
+}
+
+interface ActiveMiningShaftSegment {
+  fromDepthMeters: number
+  toDepthMeters: number
+  horizontalOffset: number
+  reason: 'dig' | 'vein' | 'tnt' | 'milestone'
+}
+```
+
+`shaftSegments` should be enough to draw the stepped silhouette without replaying the whole minigame.
+
+### Visual Requirements
+
+- Surface strip at the top, with sky/grass/dirt material language.
+- Mine void/background below the surface.
+- Shaft outline rendered as hard blocky steps.
+- Depth labels attached to segment endpoints and major milestones.
+- Best-depth day should be visually distinct.
+- TNT-blasted segments can use a wider or cracked shaft shape.
+- Vein segments can tint the shaft wall or add small ore marks.
+- The view should work on mobile as a scrollable vertical/horizontal panel.
+
+This graph is important because it turns active mining into a personal record. The player is not just accumulating ore; they are building a visible history of how far they dug.
+
 ## Rewards
 
 ### Normal Blocks
@@ -209,6 +291,7 @@ interface ActiveMiningState {
   taskId: string
   depthMeters: number
   bestDepthMeters: number
+  dailySummaries: Record<string, ActiveMiningDailySummary>
   layerSeed: string
   layerIndex: number
   gridWidth: number
@@ -228,6 +311,7 @@ Keep this serializable and versionable like the rest of the save system.
 - Broken blocks should visually clear or darken.
 - Current depth is prominent: `24m deep`.
 - Depth meter sits beside the mine face and can scroll or compress at high depth.
+- A separate mining history view should show daily shaft profiles for all days mined.
 - The board should fit mobile in portrait.
 - Tapping and holding must be comfortable.
 - The active lane should still display core idle stats: rate, XP, mastery, blockers.
@@ -281,10 +365,19 @@ Third slice:
 3. Add balancing data per ore tier.
 4. Add mobile polish and accessibility controls.
 
+Fourth slice:
+
+1. Track compressed daily mining summaries.
+2. Render the first daily shaft profile graph.
+3. Add all-days timeline selection.
+4. Mark best-depth, TNT, vein, and rare-find days.
+
 ## Open Design Questions
 
 - Should depth reset when changing mining tasks, or should each mining task have its own shaft?
 - Should best depth be global, per skill, or per ore/task?
+- Should daily history group by local date only, or by play session when sessions cross midnight?
+- Should the shaft graph show the exact dig path, a compressed readable silhouette, or both behind a detail toggle?
 - Should TNT be an inventory resource, active-mining-only charge, or both?
 - Should stone/gravel become real inventory materials before the minigame ships?
 - Should active mining yield more total resources than idle, or mainly different resources and better bursts?

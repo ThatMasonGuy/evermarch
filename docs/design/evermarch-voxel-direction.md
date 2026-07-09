@@ -88,6 +88,10 @@ The current active lane should evolve from a tool-focused scene into concrete ac
 
 For mining specifically, the target is a face-on block grid where players break every visible block to dig one meter deeper, find ore veins, and occasionally discover active-only boosts like TNT.
 
+### Skill Questlines
+
+Every skill should eventually have a staged questline that teaches its loop, gives concrete goals, and rewards progress in ways that make the next stretch smoother. The canonical design is `docs/design/skill-questlines.md`.
+
 ### Routine Lane
 
 Routine is the player's chosen automated work route. It should make output rate, mastery, and next upgrade obvious.

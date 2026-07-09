@@ -40,6 +40,7 @@ Evermarch is the authenticated idle RPG app mounted at `/evermarch/app/` on `pla
 
 - For visual, UX, gameplay-feel, or asset work, read `docs/design/evermarch-voxel-direction.md` and `docs/design/asset-candidates.md` before editing.
 - For active-lane mining work, also read `docs/design/active-mining-minigame.md`; it is the canonical design for the mining block-face/depth loop.
+- For skill quest, objective, achievement-like progression, or reward-chain work, read `docs/design/skill-questlines.md` before editing.
 - Evermarch's target direction is Minecraft-adjacent block/voxel materiality crossed with Melvor Idle-style dense progression UI and active Minecraft-like gathering/crafting actions.
 - Do not copy Minecraft textures, sprites, UI, sounds, mobs, item silhouettes, names, or trade dress. Use the inspiration for material feel and verbs, not source assets.
 - Prefer CC0, owned, or commissioned assets. Keep source URLs, license files, and intake notes next to any vendored asset folder.

@@ -45,6 +45,17 @@ The active panel should pair this with:
 - Inventory/resource gain feedback.
 - TNT or active-only item quick slot when available.
 
+Saved visual reference: `docs/design/inspiration/active-mining-panel-inspiration.png`.
+
+Important takeaways from the reference:
+
+- Left-side vertical depth meter with the current depth marker.
+- Large face-on mining board made of chunky square blocks.
+- Broken/cracked block states visible inside the block face.
+- Tool/action belt below the mine board.
+- Strong dirt/stone frame and underground atmosphere.
+- Ignore the reference's energy, inventory, currency, and settings controls where Evermarch already has those elsewhere in the app.
+
 ## Board Rules
 
 ### Layer
@@ -110,6 +121,8 @@ Depth should feel like "how far I personally dug", not just mining XP.
 ## Mining History Graph
 
 Evermarch should eventually show a history view for the days the player actively mined. This should look less like a normal line chart and more like a side-on mine shaft record: surface at the top, a small player marker near the entrance, and a stepped vertical shaft profile dropping through the ground with depth labels.
+
+Saved visual reference: `docs/design/inspiration/mining-history-panel-inspiration.png`.
 
 Reference shape:
 
@@ -182,6 +195,9 @@ interface ActiveMiningShaftSegment {
 - Mine void/background below the surface.
 - Shaft outline rendered as hard blocky steps.
 - Depth labels attached to segment endpoints and major milestones.
+- Left stat rail with today, deepest day, total active depth, and days mined.
+- Stone-framed chart panel with a horizontal day axis and vertical meter axis.
+- CTA for milestones or records.
 - Best-depth day should be visually distinct.
 - TNT-blasted segments can use a wider or cracked shaft shape.
 - Vein segments can tint the shaft wall or add small ore marks.

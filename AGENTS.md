@@ -35,3 +35,17 @@ Evermarch is the authenticated idle RPG app mounted at `/evermarch/app/` on `pla
 - After any major change or new feature, commit a verified checkpoint promptly. Multiple commits during one working turn are acceptable when they create useful rollback points.
 - Preserve user work already in the tree.
 - Do not credit external code-generation tools in commits, docs, comments, or generated project content.
+
+## Design Direction
+
+- For visual, UX, gameplay-feel, or asset work, read `docs/design/evermarch-voxel-direction.md` and `docs/design/asset-candidates.md` before editing.
+- Evermarch's target direction is Minecraft-adjacent block/voxel materiality crossed with Melvor Idle-style dense progression UI and active Minecraft-like gathering/crafting actions.
+- Do not copy Minecraft textures, sprites, UI, sounds, mobs, item silhouettes, names, or trade dress. Use the inspiration for material feel and verbs, not source assets.
+- Prefer CC0, owned, or commissioned assets. Keep source URLs, license files, and intake notes next to any vendored asset folder.
+- Keep runtime assets lightweight and portable for web first, with future mobile and Steam builds in mind. Prefer curated PNG/WebP sprites and spritesheets over large raw archives.
+
+## Platform Posture
+
+- Firebase/Firestore is acceptable while it stays free and fits the app. Do not migrate persistence or hosting by default.
+- Preserve migration optionality by keeping save serialization, engine logic, and platform services separated.
+- Revisit hosting or database choices only when the user explicitly asks or revenue/live-ops needs justify the cost and complexity.

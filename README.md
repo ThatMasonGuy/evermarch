@@ -37,6 +37,15 @@ The play-site pipeline builds Evermarch with:
 npm run build -- --base=/evermarch/app/
 ```
 
+## Design Direction
+
+Evermarch is moving toward a Minecraft-adjacent voxel/block visual language with Melvor Idle-style progression density and active gathering/crafting actions. Start with:
+
+- `docs/design/evermarch-voxel-direction.md`
+- `docs/design/asset-candidates.md`
+
+Current seed art lives under `src/games/evermarch/assets/vendor/kenney-voxel/` and uses the included CC0 license.
+
 ## Live Update Pipeline
 
 1. Work in this repo.

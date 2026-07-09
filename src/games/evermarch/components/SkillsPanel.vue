@@ -5,53 +5,17 @@
       <span class="skills-sub">Total Level: {{ store.totalLevel }}</span>
     </div>
 
-    <div class="skills-grid">
-      <button
-        v-for="skill in skillData"
-        :key="skill.id"
-        type="button"
-        class="skill-card"
-        :class="{
-          'skill-card-idle': isInIdleLane(skill.id),
-        }"
-        :disabled="!skill.currentTaskId"
-        :aria-pressed="isInIdleLane(skill.id)"
-        :title="routineSelectTitle(skill)"
-        @click="selectRoutineSkill(skill)"
-      >
-        <div class="skill-icon" :style="{ background: skill.def.color + '18', color: skill.def.color }">
-          <img v-if="skill.sprite" :src="skill.sprite" alt="" class="skill-sprite" />
-          <template v-else>
-            <Pickaxe v-if="skill.def.icon === 'Pickaxe'" :size="18" />
-            <TreePine v-else-if="skill.def.icon === 'TreePine'" :size="18" />
-            <Fish v-else-if="skill.def.icon === 'Fish'" :size="18" />
-            <Sprout v-else-if="skill.def.icon === 'Sprout'" :size="18" />
-            <FlameKindling v-else-if="skill.def.icon === 'FlameKindling'" :size="18" />
-            <Hammer v-else-if="skill.def.icon === 'Hammer'" :size="18" />
-            <Swords v-else-if="skill.def.icon === 'Swords'" :size="18" />
-            <BookOpen v-else :size="18" />
-          </template>
-        </div>
-        <div class="skill-info">
-          <div class="skill-title-row">
-            <div class="skill-name">{{ skill.def.name }}</div>
-            <div class="skill-level">Lv. {{ skill.level }}</div>
-          </div>
-          <div class="skill-bar">
-            <div
-              class="skill-bar-fill"
-              :style="{ width: (skill.progress * 100) + '%', background: skill.def.color }"
-            ></div>
-          </div>
-        </div>
-      </button>
-    </div>
+    <SkillSelectorRail
+      :items="skillSelectorItems"
+      ariaLabel="Routine skill"
+      @select="selectRoutineSkillById"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { BookOpen, Fish, FlameKindling, Hammer, Pickaxe, Sprout, Swords, TreePine } from 'lucide-vue-next'
+import SkillSelectorRail from './SkillSelectorRail.vue'
 import { useGameStore } from '../stores/gameStore'
 import { SKILL_LIST, type SkillDefinition, type SkillId } from '../data/skills'
 import { getTaskById, getTasksForSkill, type TaskDefinition } from '../data/tasks'
@@ -86,6 +50,21 @@ const skillData = computed(() =>
   })
 )
 
+const skillSelectorItems = computed(() =>
+  skillData.value.map((skill) => ({
+    id: skill.id,
+    name: skill.def.name,
+    level: skill.level,
+    progress: skill.progress,
+    color: skill.def.color,
+    icon: skill.def.icon,
+    sprite: skill.sprite,
+    disabled: !skill.currentTaskId,
+    selected: isInIdleLane(skill.id),
+    title: routineSelectTitle(skill),
+  }))
+)
+
 function getIdleSkillId(): SkillId | null {
   const taskId = store.lanes.idle.taskId
   if (!taskId) return null
@@ -97,6 +76,11 @@ function isInIdleLane(id: SkillId): boolean { return getIdleSkillId() === id }
 function selectRoutineSkill(skill: { currentTaskId: string | null }) {
   if (!skill.currentTaskId) return
   store.setLaneTask('idle', skill.currentTaskId)
+}
+
+function selectRoutineSkillById(skillId: SkillId) {
+  const skill = skillData.value.find((candidate) => candidate.id === skillId)
+  if (skill) selectRoutineSkill(skill)
 }
 
 function routineSelectTitle(skill: { def: SkillDefinition; currentTaskName: string | null }): string {
@@ -133,116 +117,6 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 .skills-sub {
   font-size: 13px;
   color: var(--color-text-muted);
-}
-
-.skills-grid {
-  min-width: 0;
-  max-width: 100%;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 4px;
-  scrollbar-gutter: stable;
-}
-
-.skill-card {
-  flex: 0 0 auto;
-  width: max-content;
-  min-width: 176px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 68px;
-  padding: 10px;
-  border-radius: var(--radius-md);
-  border: 2px solid var(--color-border);
-  background: var(--color-bg-card);
-  color: inherit;
-  font-family: var(--font-body);
-  text-align: left;
-  transition: all var(--transition-fast);
-  position: relative;
-  cursor: pointer;
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.skill-card:hover {
-  border-color: var(--color-border-hover);
-  background: var(--color-bg-card-hover);
-}
-.skill-card-idle {
-  border-color: rgba(251, 191, 36, 0.48);
-  background: linear-gradient(180deg, rgba(251, 191, 36, 0.08), var(--color-bg-card));
-  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.16);
-}
-
-.skill-card:disabled {
-  cursor: not-allowed;
-  opacity: 0.52;
-}
-.skill-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-hover);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.skill-sprite {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.22));
-}
-
-.skill-info {
-  flex: 1 0 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.skill-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.skill-name {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--color-text-primary);
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.skill-level {
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.skill-bar {
-  height: 6px;
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.skill-bar-fill {
-  height: 100%;
-  border-radius: var(--radius-sm);
-  transition: width 0.3s ease;
 }
 
 .skill-progression {

@@ -1,44 +1,11 @@
 <template>
   <div class="active-page">
     <div class="active-skill-selector" v-if="selectableSkills.length > 0">
-      <div class="active-skill-options" aria-label="Active skill">
-        <button
-          v-for="skill in selectableSkills"
-          :key="skill.id"
-          type="button"
-          class="active-skill-option"
-          :class="{ 'active-skill-option-current': skill.id === selectedSkillId }"
-          :disabled="!hasUnlockedTasks(skill.id)"
-          :title="skillTabTitle(skill.id)"
-          @click="selectSkill(skill.id)"
-        >
-          <div class="active-skill-card-icon" :style="{ background: skill.color + '18', color: skill.color }">
-            <img v-if="spriteForSkill(skill.id)" :src="spriteForSkill(skill.id) ?? ''" alt="" class="active-skill-card-sprite" />
-            <template v-else>
-              <Pickaxe v-if="skill.icon === 'Pickaxe'" :size="18" />
-              <TreePine v-else-if="skill.icon === 'TreePine'" :size="18" />
-              <Fish v-else-if="skill.icon === 'Fish'" :size="18" />
-              <Sprout v-else-if="skill.icon === 'Sprout'" :size="18" />
-              <FlameKindling v-else-if="skill.icon === 'FlameKindling'" :size="18" />
-              <Hammer v-else-if="skill.icon === 'Hammer'" :size="18" />
-              <BookOpen v-else-if="skill.icon === 'BookOpen'" :size="18" />
-              <Hammer v-else :size="18" />
-            </template>
-          </div>
-          <div class="active-skill-card-info">
-            <div class="active-skill-card-title">
-              <span>{{ skill.name }}</span>
-              <small>Lv. {{ store.getSkillLevel(skill.id) }}</small>
-            </div>
-            <div class="active-skill-card-bar">
-              <div
-                class="active-skill-card-fill"
-                :style="{ width: (store.getSkillProgress(skill.id) * 100) + '%', background: skill.color }"
-              ></div>
-            </div>
-          </div>
-        </button>
-      </div>
+      <SkillSelectorRail
+        :items="activeSkillSelectorItems"
+        ariaLabel="Active skill"
+        @select="selectSkill"
+      />
     </div>
 
     <div class="active-workbench">
@@ -225,6 +192,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ArrowUpRight, BookOpen, FlameKindling, Fish, Hammer, Lock, Pickaxe, Sprout, TreePine, Trophy } from 'lucide-vue-next'
+import SkillSelectorRail from './SkillSelectorRail.vue'
 import { useGameStore } from '../stores/gameStore'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS, SKILL_LIST, type SkillId } from '../data/skills'
@@ -332,6 +300,21 @@ const selectableSkills = computed(() => {
   const skillIds = new Set(selectableTasks.value.map((t) => t.skillId))
   return SKILL_LIST.filter((skill) => skillIds.has(skill.id))
 })
+
+const activeSkillSelectorItems = computed(() =>
+  selectableSkills.value.map((skill) => ({
+    id: skill.id,
+    name: skill.name,
+    level: store.getSkillLevel(skill.id),
+    progress: store.getSkillProgress(skill.id),
+    color: skill.color,
+    icon: skill.icon,
+    sprite: spriteForSkill(skill.id),
+    disabled: !hasUnlockedTasks(skill.id),
+    selected: skill.id === selectedSkillId.value,
+    title: skillTabTitle(skill.id),
+  }))
+)
 
 const selectedSkillId = computed<SkillId | null>(() => {
   return task.value?.skillId ?? selectableSkills.value[0]?.id ?? null
@@ -994,119 +977,6 @@ function formatRate(value: number): string {
   padding: 2px 4px 2px 0;
 }
 
-.active-skill-options {
-  min-width: 0;
-  max-width: 100%;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 4px;
-  scrollbar-gutter: stable;
-}
-
-.active-skill-option {
-  flex: 0 0 auto;
-  width: max-content;
-  min-width: 176px;
-  min-height: 68px;
-  padding: 10px;
-  border-radius: var(--radius-md);
-  border: 2px solid var(--color-border);
-  background: var(--color-bg-card);
-  color: var(--color-text-secondary);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  touch-action: manipulation;
-  text-align: left;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.active-skill-option:hover:not(:disabled) {
-  border-color: var(--color-border-hover);
-  color: var(--color-text-primary);
-  background: var(--color-bg-card-hover);
-}
-.active-skill-option:disabled {
-  opacity: 0.52;
-  cursor: not-allowed;
-}
-.active-skill-option-current {
-  border-color: var(--color-accent);
-  background: linear-gradient(180deg, rgba(251, 191, 36, 0.08), var(--color-bg-card));
-  color: var(--color-accent-light);
-  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.16);
-}
-
-.active-skill-card-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-hover);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.active-skill-card-sprite {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.22));
-}
-
-.active-skill-card-info {
-  flex: 1 0 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.active-skill-card-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.active-skill-card-title span {
-  min-width: 0;
-  white-space: nowrap;
-  color: var(--color-text-primary);
-  font-weight: 800;
-}
-
-.active-skill-card-title small {
-  flex-shrink: 0;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.active-skill-card-bar {
-  height: 6px;
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.active-skill-card-fill {
-  height: 100%;
-  border-radius: var(--radius-sm);
-  transition: width 0.3s ease;
-}
-
 .active-task-option {
   min-height: 58px;
   padding: 9px 10px 13px;
@@ -1240,9 +1110,6 @@ function formatRate(value: number): string {
     max-height: 320px;
   }
 
-  .active-skill-options {
-    padding-bottom: 2px;
-  }
 }
 
 @media (max-width: 560px) {

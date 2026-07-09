@@ -466,14 +466,23 @@ function formatDuration(ms: number): string {
   transform: scale(0.97) translateY(8px);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 680px) {
   .welcome-backdrop {
-    padding: 10px;
+    align-items: flex-start;
+    padding: 8px;
+    overflow: hidden;
   }
 
   .welcome-modal {
-    padding: 16px;
-    gap: 12px;
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    padding: 12px;
+    gap: 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .welcome-title-wrap h2 {
+    font-size: 17px;
   }
 
   .welcome-stats {
@@ -483,6 +492,24 @@ function formatDuration(ms: number): string {
   .welcome-grid,
   .welcome-lanes {
     grid-template-columns: 1fr;
+  }
+
+  .welcome-stat {
+    padding: 8px;
+  }
+
+  .welcome-gain-row {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+  }
+
+  .welcome-gain-total {
+    display: none;
+  }
+
+  .welcome-close {
+    position: sticky;
+    bottom: 0;
+    flex-shrink: 0;
   }
 }
 </style>

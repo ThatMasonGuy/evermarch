@@ -2,6 +2,7 @@ import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/platform/stores/authStore'
 import { useEvermarchStore } from '@/games/evermarch/stores/evermarchStore'
+import { consumePlaySessionIntent } from '@/games/evermarch/engine/playSessionGate'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -75,6 +76,10 @@ router.beforeEach(async (to) => {
     if (!evermarchStore.isApproved) {
       return returnToPortal()
     }
+  }
+
+  if (to.name === 'evermarch-game' && !consumePlaySessionIntent()) {
+    return { name: 'evermarch-saves' }
   }
 
   return true

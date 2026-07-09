@@ -521,20 +521,40 @@ function masteryProgressWidth(taskId: string): string {
     flex-direction: column;
     height: auto;
     min-height: 0;
+    gap: 10px;
   }
 
   .routine-mood-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    overflow-x: auto;
+    padding: 6px;
+  }
+
+  .routine-mood-tile {
+    flex: 0 0 auto;
+    min-width: 68px;
   }
 
   .routine-workbench {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     height: auto;
     min-height: 0;
   }
 
+  .routine-play-panel {
+    min-height: 220px;
+    padding: 10px;
+  }
+
+  .routine-play-panel :deep(.passive-panel) {
+    min-height: auto;
+  }
+
   .routine-options-panel {
-    max-height: 320px;
+    height: auto;
+    max-height: none;
   }
 
   .routine-options-head {
@@ -543,6 +563,30 @@ function masteryProgressWidth(taskId: string): string {
 
   .routine-task-upgrade {
     width: 100%;
+  }
+
+  .routine-task-options {
+    max-height: min(300px, 38dvh);
+  }
+}
+
+@media (max-width: 560px) {
+  .routine-play-panel {
+    min-height: 190px;
+    padding: 8px;
+  }
+
+  .routine-play-panel :deep(.passive-task-info) {
+    gap: 10px;
+  }
+
+  .routine-play-panel :deep(.passive-icon-ring) {
+    width: 52px;
+    height: 52px;
+  }
+
+  .routine-options-panel {
+    padding: 10px;
   }
 }
 </style>

@@ -57,7 +57,7 @@ const routineSkillId = computed(() => skillIdForTask(store.lanes.idle.taskId))
 const tabs = computed(() =>
   baseTabs.map((tab) => ({
     ...tab,
-    indicator: tab.id === 'farming' ? store.readyFarmingPlotCount > 0 : tab.indicator,
+    indicator: tab.id === 'farming' ? store.plantedFarmingPlotCount > 0 : tab.indicator,
     themeColor: tab.id === 'active'
       ? colorForSkill(activeSkillId.value)
       : tab.id === 'routine'
@@ -148,11 +148,13 @@ function colorForSkill(skillId: SkillId | null): string | null {
 }
 
 .em-sidebar-indicator {
+  position: absolute;
+  top: 7px;
+  right: 7px;
   width: 6px;
   height: 6px;
   border-radius: 0;
   background: var(--color-accent);
-  margin-left: auto;
   animation: glow-pulse 2s ease-in-out infinite;
 }
 
@@ -164,6 +166,5 @@ function colorForSkill(skillId: SkillId | null): string | null {
 @media (max-width: 1024px) {
   .em-sidebar-btn span { display: none; }
   .em-sidebar-btn { justify-content: center; padding: 10px; }
-  .em-sidebar-indicator { display: none; }
 }
 </style>

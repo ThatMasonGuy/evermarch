@@ -191,6 +191,7 @@ import { useAuthStore } from '@/platform/stores/authStore'
 import { isFirebaseEnabled } from '@/platform/services/firebase'
 import { useGameStore } from '../stores/gameStore'
 import { loadLocal, saveLocal, deleteLocalSave, pullFromCloud } from '../engine/saveSystem'
+import { markPlaySessionIntent } from '../engine/playSessionGate'
 import type { GameSaveData } from '../stores/gameStore'
 import { levelForXp } from '../data/xp'
 
@@ -282,7 +283,7 @@ function formatDurationDelta(ms: number): string {
 }
 
 function continueLocal() {
-  router.push('/play')
+  enterGame()
 }
 
 async function restoreFromCloud() {
@@ -297,7 +298,7 @@ async function restoreFromCloud() {
   if (data) {
     gameStore.deserialize(data)
     saveLocal()
-    router.push('/play')
+    enterGame()
   }
 }
 
@@ -311,6 +312,11 @@ function handleCreateSave() {
   gameStore.resetToDefaults(newSaveName.value.trim())
   saveLocal()
   showCreateModal.value = false
+  enterGame()
+}
+
+function enterGame() {
+  markPlaySessionIntent()
   router.push('/play')
 }
 </script>

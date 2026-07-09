@@ -84,6 +84,9 @@ function toggleCollapsed() {
   text-transform: uppercase;
   flex-shrink: 0;
   cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 
@@ -193,5 +196,44 @@ function toggleCollapsed() {
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .em-log {
+    width: 100%;
+    max-height: 38dvh;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .em-log-header {
+    min-height: 44px;
+    padding: 9px 12px;
+  }
+
+  .em-log-collapsed {
+    max-height: 44px;
+  }
+
+  .em-log-collapsed .em-log-header {
+    min-height: 44px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+    padding: 9px 12px;
+  }
+
+  .em-log-collapsed .em-log-toggle-icon {
+    margin-left: 0;
+    transform: rotate(90deg);
+  }
+
+  .em-log-collapsed .em-log-rail {
+    display: none;
+  }
+
+  .em-log-entries {
+    max-height: calc(38dvh - 44px);
+  }
 }
 </style>

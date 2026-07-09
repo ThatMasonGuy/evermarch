@@ -6,6 +6,7 @@
       :cloud-sync-title="cloudSyncTitle"
       :cloud-sync-disabled="cloudBackupDisabled"
       :cloud-busy="cloudBusy"
+      :cloud-sync-stale="cloudSyncStale"
       @backup="handleBackup"
       @settings="showSettings = true"
     />
@@ -86,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { Swords } from 'lucide-vue-next'
 import TopBar from '../components/TopBar.vue'
 import SidebarNav from '../components/SidebarNav.vue'
@@ -115,8 +116,11 @@ const isLogCollapsed = ref(true)
 const offlineSummary = ref<OfflineProgressSummary | null>(null)
 const cloudBusy = ref(false)
 const nowMs = ref(Date.now())
+const gameReadyForCloud = ref(false)
+const autoCloudSyncedUid = ref<string | null>(null)
 
 const CLOUD_SAVE_COOLDOWN_MS = 30_000
+const CLOUD_SYNC_STALE_MS = 10 * 60 * 1000
 
 let cloudStatusTimer: ReturnType<typeof setInterval> | null = null
 
@@ -134,6 +138,7 @@ onMounted(() => {
 
   // Start game tick
   startEngine()
+  gameReadyForCloud.value = true
 
   // Save on tab close
   window.addEventListener('beforeunload', handleBeforeUnload)
@@ -150,6 +155,16 @@ onUnmounted(() => {
     cloudStatusTimer = null
   }
 })
+
+watch(
+  () => [authStore.user?.uid ?? null, gameReadyForCloud.value] as const,
+  ([uid, ready]) => {
+    if (!uid || !ready || autoCloudSyncedUid.value === uid) return
+    autoCloudSyncedUid.value = uid
+    void runCloudBackup({ ignoreCooldown: true, automatic: true })
+  },
+  { immediate: true }
+)
 
 function handleBeforeUnload() {
   saveLocal()
@@ -168,6 +183,12 @@ const cloudCooldownRemainingMs = computed(() => {
 const cloudCooldownRemainingSeconds = computed(() => Math.ceil(cloudCooldownRemainingMs.value / 1000))
 
 const cloudBackupDisabled = computed(() => cloudBusy.value || cloudCooldownRemainingMs.value > 0)
+
+const cloudSyncStale = computed(() => {
+  if (!authStore.user || cloudBusy.value) return false
+  if (cloudSyncAgeMs.value === null) return true
+  return cloudSyncAgeMs.value > CLOUD_SYNC_STALE_MS
+})
 
 const cloudSyncLabel = computed(() => {
   if (cloudBusy.value) return 'Saving'
@@ -229,8 +250,12 @@ function formatLastSyncedText(ms: number): string {
 }
 
 async function handleBackup(): Promise<boolean> {
+  return runCloudBackup()
+}
+
+async function runCloudBackup(options: { ignoreCooldown?: boolean; automatic?: boolean } = {}): Promise<boolean> {
   if (cloudBusy.value) return false
-  if (cloudCooldownRemainingMs.value > 0) {
+  if (!options.ignoreCooldown && cloudCooldownRemainingMs.value > 0) {
     store.addLog(`Cloud backup available in ${cloudCooldownRemainingSeconds.value}s.`, 'system')
     return false
   }
@@ -248,7 +273,7 @@ async function handleBackup(): Promise<boolean> {
     const ok = await pushToCloud(authStore.user.uid)
     nowMs.value = Date.now()
     if (!ok) {
-      store.addLog('Cloud backup failed.', 'system')
+      store.addLog(options.automatic ? 'Login cloud sync failed.' : 'Cloud backup failed.', 'system')
     }
     return ok
   } finally {
@@ -270,6 +295,8 @@ async function handleBackup(): Promise<boolean> {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overscroll-behavior: contain;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* ── Layout ──────────────────────────────────────────────── */
@@ -362,7 +389,7 @@ async function handleBackup(): Promise<boolean> {
 @media (max-width: 768px) {
   .em-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
   .em-layout > :first-child {
@@ -377,7 +404,7 @@ async function handleBackup(): Promise<boolean> {
   }
 
   .em-layout > :last-child {
-    display: none;
+    min-height: 0;
   }
 
 }

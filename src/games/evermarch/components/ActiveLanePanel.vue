@@ -1,145 +1,6 @@
 <template>
-  <div class="active-panel">
-    <div class="active-core">
-      <!-- Header -->
-      <div class="active-header">
-        <div class="active-label">
-          <div class="active-label-dot"></div>
-          <span>Active</span>
-        </div>
-        <h2 class="active-title" v-if="task">{{ task.name }}</h2>
-        <h2 class="active-title active-title-empty" v-else>No Active Task</h2>
-      </div>
-
-      <div v-if="task" class="active-voxel-scene" :class="`active-voxel-scene-${task.skillId}`">
-        <div class="active-voxel-sky">
-          <span class="active-voxel-sun"></span>
-          <span class="active-voxel-cloud active-voxel-cloud-a"></span>
-          <span class="active-voxel-cloud active-voxel-cloud-b"></span>
-        </div>
-        <div class="active-voxel-focus">
-          <img v-if="materialSprite" :src="materialSprite" alt="" class="active-voxel-material" />
-          <img v-if="actionSprite" :src="actionSprite" alt="" class="active-voxel-tool" />
-        </div>
-        <div class="active-voxel-ground" aria-hidden="true">
-          <span
-            v-for="index in 8"
-            :key="index"
-            class="active-voxel-block"
-            :style="{ backgroundImage: `url(${sceneTileSprite})` }"
-          ></span>
-        </div>
-      </div>
-
-      <!-- Skill Level + XP -->
-      <div class="active-meta" v-if="task && skillDef">
-        <div class="active-badge-row">
-          <div class="active-skill-badge">
-            <span class="active-skill-name">{{ skillDef.name }} Lv.{{ skillLevel }}</span>
-          </div>
-          <div
-            class="active-mastery-badge"
-            :class="{ 'active-mastery-badge-complete': isTaskMastered }"
-          >
-            <Trophy :size="12" />
-            <span>Mastery Lv.{{ masteryLevel }}</span>
-          </div>
-        </div>
-        <div class="active-xp-bar-container">
-          <div class="active-xp-bar">
-            <div
-              class="active-xp-bar-fill"
-              :style="{ width: (skillProgress * 100) + '%' }"
-            ></div>
-          </div>
-          <span class="active-xp-text">Skill: {{ formatNumber(xpToNext) }} XP to next</span>
-        </div>
-      </div>
-
-      <!-- Rates Display -->
-      <div class="active-rates" v-if="task">
-        <div class="active-rate">
-          <span class="active-rate-label">Routine Rate:</span>
-          <span class="active-rate-value">+{{ task.drops[0]?.amount ?? 1 }} / {{ (task.baseInterval / 1000).toFixed(0) }}s</span>
-        </div>
-        <div class="active-rate active-rate-boosted">
-          <span class="active-rate-label">Active Pace:</span>
-          <span class="active-rate-value">{{ activePaceLabel }} / {{ maxActiveMultiplier }}x</span>
-        </div>
-        <div
-          class="active-rate active-rate-cost"
-          :class="{ 'active-rate-cost-blocked': hasCostBlockers }"
-          v-if="costLabel"
-        >
-          <span class="active-rate-label">Requires:</span>
-          <span class="active-rate-value">{{ costLabel }} / action</span>
-        </div>
-        <div class="active-pace" :title="activePaceTitle">
-          <div class="active-pace-top">
-            <span>Active rhythm</span>
-            <strong>{{ activePacePercent }}%</strong>
-          </div>
-          <div class="active-pace-bar">
-            <div
-              class="active-pace-fill"
-              :style="{ width: activePacePercent + '%' }"
-            ></div>
-          </div>
-          <div class="active-pace-foot">
-            <span>{{ activeProgressLabel }}</span>
-            <span>{{ activeTargetLabel }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Button -->
-      <button
-        v-if="task"
-        class="active-action-btn"
-        :class="{
-          'active-action-btn-pressed': isPressed,
-          'active-action-btn-blocked': hasCostBlockers,
-        }"
-        :title="actionButtonTitle"
-        @mousedown="onPress"
-        @mouseup="isPressed = false"
-        @mouseleave="isPressed = false"
-        @click="onAction"
-      >
-        <span v-if="actionSprite" class="active-action-sprite">
-          <img :src="actionSprite" alt="" />
-        </span>
-        <template v-else>
-          <Pickaxe v-if="task.skillId === 'mining'" :size="20" />
-          <TreePine v-else-if="task.skillId === 'woodcutting'" :size="20" />
-          <Fish v-else-if="task.skillId === 'fishing'" :size="20" />
-          <FlameKindling v-else-if="task.skillId === 'firemaking' || task.skillId === 'cooking'" :size="20" />
-          <Hammer v-else-if="task.skillId === 'smithing' || task.skillId === 'fletching' || task.skillId === 'crafting'" :size="20" />
-          <BookOpen v-else-if="task.skillId === 'runecrafting'" :size="20" />
-          <Sprout v-else :size="20" />
-        </template>
-        <span>{{ actionLabel }}</span>
-      </button>
-      <p class="active-blocked-hint" v-if="hasCostBlockers">
-        Waiting for {{ missingCostLabel }}.
-      </p>
-    </div>
-
-    <!-- Task Selector -->
-    <div class="active-task-select" v-if="selectableSkills.length > 0">
-      <div class="active-task-select-top">
-        <span class="active-task-select-label">Active skill</span>
-        <button
-          v-if="canUpgradeTask"
-          type="button"
-          class="active-task-upgrade"
-          :title="upgradeTaskTitle"
-          @click="selectBestTask"
-        >
-          <ArrowUpRight :size="12" />
-          <span>Use {{ upgradeTaskLabel }}</span>
-        </button>
-      </div>
+  <div class="active-page">
+    <div class="active-skill-selector" v-if="selectableSkills.length > 0">
       <div class="active-skill-options" aria-label="Active skill">
         <button
           v-for="skill in selectableSkills"
@@ -151,53 +12,212 @@
           :title="skillTabTitle(skill.id)"
           @click="selectSkill(skill.id)"
         >
-          <Pickaxe v-if="skill.icon === 'Pickaxe'" :size="14" />
-          <TreePine v-else-if="skill.icon === 'TreePine'" :size="14" />
-          <Fish v-else-if="skill.icon === 'Fish'" :size="14" />
-          <Sprout v-else-if="skill.icon === 'Sprout'" :size="14" />
-          <FlameKindling v-else-if="skill.icon === 'FlameKindling'" :size="14" />
-          <Hammer v-else-if="skill.icon === 'Hammer'" :size="14" />
-          <BookOpen v-else-if="skill.icon === 'BookOpen'" :size="14" />
-          <Hammer v-else :size="14" />
-          <span>{{ skill.name }}</span>
-          <small>Lv.{{ store.getSkillLevel(skill.id) }}</small>
-        </button>
-      </div>
-      <div class="active-task-select-row">
-        <span class="active-task-select-label">{{ taskSelectLabel }}</span>
-        <span class="active-task-count">{{ unlockedTasksForSelectedSkill.length }} / {{ tasksForSelectedSkill.length }} unlocked</span>
-      </div>
-      <div class="active-task-options" role="listbox" :aria-label="taskSelectLabel">
-        <button
-          v-for="t in tasksForSelectedSkill"
-          :key="t.id"
-          class="active-task-option"
-          :class="{
-            'active-task-option-current': t.id === lane.taskId,
-            'active-task-option-locked': !canUseTask(t),
-          }"
-          :aria-selected="t.id === lane.taskId"
-          :disabled="!canUseTask(t)"
-          @click="selectTask(t.id)"
-        >
-          <span class="active-task-option-main">
-            <span class="active-task-option-name">{{ taskChoiceLabel(t) }}</span>
-            <Lock v-if="!canUseTask(t)" :size="12" />
-          </span>
-          <span class="active-task-option-meta">
-            <span>Lv.{{ t.levelRequired }}</span>
-            <span :class="{ 'active-task-option-mastered': store.isTaskMastered(t.id) }">
-              {{ taskMasteryLabel(t) }}
-            </span>
-            <span v-if="t.id === lane.taskId">Current</span>
-          </span>
+          <div class="active-skill-card-icon" :style="{ background: skill.color + '18', color: skill.color }">
+            <img v-if="spriteForSkill(skill.id)" :src="spriteForSkill(skill.id) ?? ''" alt="" class="active-skill-card-sprite" />
+            <template v-else>
+              <Pickaxe v-if="skill.icon === 'Pickaxe'" :size="18" />
+              <TreePine v-else-if="skill.icon === 'TreePine'" :size="18" />
+              <Fish v-else-if="skill.icon === 'Fish'" :size="18" />
+              <Sprout v-else-if="skill.icon === 'Sprout'" :size="18" />
+              <FlameKindling v-else-if="skill.icon === 'FlameKindling'" :size="18" />
+              <Hammer v-else-if="skill.icon === 'Hammer'" :size="18" />
+              <BookOpen v-else-if="skill.icon === 'BookOpen'" :size="18" />
+              <Hammer v-else :size="18" />
+            </template>
+          </div>
+          <div class="active-skill-card-info">
+            <div class="active-skill-card-title">
+              <span>{{ skill.name }}</span>
+              <small>Lv. {{ store.getSkillLevel(skill.id) }}</small>
+            </div>
+            <div class="active-skill-card-bar">
+              <div
+                class="active-skill-card-fill"
+                :style="{ width: (store.getSkillProgress(skill.id) * 100) + '%', background: skill.color }"
+              ></div>
+            </div>
+          </div>
         </button>
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-if="!task" class="active-empty">
-      <p>Select a task from the Skills panel to begin active training.</p>
+    <div class="active-workbench">
+      <section class="active-core">
+        <div class="active-header">
+          <h2 class="active-title" v-if="task">{{ task.name }}</h2>
+          <h2 class="active-title active-title-empty" v-else>No Active Task</h2>
+        </div>
+
+        <div v-if="task" class="active-voxel-scene" :class="`active-voxel-scene-${task.skillId}`">
+          <div class="active-voxel-sky">
+            <span class="active-voxel-sun"></span>
+            <span class="active-voxel-cloud active-voxel-cloud-a"></span>
+            <span class="active-voxel-cloud active-voxel-cloud-b"></span>
+          </div>
+          <div class="active-voxel-focus">
+            <img v-if="materialSprite" :src="materialSprite" alt="" class="active-voxel-material" />
+            <img v-if="actionSprite" :src="actionSprite" alt="" class="active-voxel-tool" />
+          </div>
+          <div class="active-voxel-ground" aria-hidden="true">
+            <span
+              v-for="index in 8"
+              :key="index"
+              class="active-voxel-block"
+              :style="{ backgroundImage: `url(${sceneTileSprite})` }"
+            ></span>
+          </div>
+        </div>
+
+        <div class="active-meta" v-if="task && skillDef">
+          <div class="active-badge-row">
+            <div class="active-skill-badge">
+              <span class="active-skill-name">{{ skillDef.name }} Lv.{{ skillLevel }}</span>
+            </div>
+            <div
+              class="active-mastery-badge"
+              :class="{ 'active-mastery-badge-complete': isTaskMastered }"
+            >
+              <Trophy :size="12" />
+              <span>Mastery Lv.{{ masteryLevel }}</span>
+            </div>
+          </div>
+          <div class="active-xp-bar-container">
+            <div class="active-xp-bar">
+              <div
+                class="active-xp-bar-fill"
+                :style="{ width: (skillProgress * 100) + '%' }"
+              ></div>
+            </div>
+            <span class="active-xp-text">Skill: {{ formatNumber(xpToNext) }} XP to next</span>
+          </div>
+        </div>
+
+        <div class="active-rates" v-if="task">
+          <div class="active-rate">
+            <span class="active-rate-label">Routine Rate:</span>
+            <span class="active-rate-value">+{{ task.drops[0]?.amount ?? 1 }} / {{ (task.baseInterval / 1000).toFixed(0) }}s</span>
+          </div>
+          <div class="active-rate active-rate-boosted">
+            <span class="active-rate-label">Active Pace:</span>
+            <span class="active-rate-value">{{ activePaceLabel }} / {{ maxActiveMultiplier }}x</span>
+          </div>
+          <div
+            class="active-rate active-rate-cost"
+            :class="{ 'active-rate-cost-blocked': hasCostBlockers }"
+            v-if="costLabel"
+          >
+            <span class="active-rate-label">Requires:</span>
+            <span class="active-rate-value">{{ costLabel }} / action</span>
+          </div>
+          <div class="active-pace" :title="activePaceTitle">
+            <div class="active-pace-top">
+              <span>Active rhythm</span>
+              <strong>{{ activePacePercent }}%</strong>
+            </div>
+            <div class="active-pace-bar">
+              <div
+                class="active-pace-fill"
+                :style="{ width: activePacePercent + '%' }"
+              ></div>
+            </div>
+            <div class="active-pace-foot">
+              <span>{{ activeProgressLabel }}</span>
+              <span>{{ activeTargetLabel }}</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          v-if="task"
+          class="active-action-btn"
+          :class="{
+            'active-action-btn-pressed': isPressed,
+            'active-action-btn-blocked': hasCostBlockers,
+          }"
+          :title="actionButtonTitle"
+          @mousedown="onPress"
+          @mouseup="isPressed = false"
+          @mouseleave="isPressed = false"
+          @click="onAction"
+        >
+          <span v-if="actionSprite" class="active-action-sprite">
+            <img :src="actionSprite" alt="" />
+          </span>
+          <template v-else>
+            <Pickaxe v-if="task.skillId === 'mining'" :size="20" />
+            <TreePine v-else-if="task.skillId === 'woodcutting'" :size="20" />
+            <Fish v-else-if="task.skillId === 'fishing'" :size="20" />
+            <FlameKindling v-else-if="task.skillId === 'firemaking' || task.skillId === 'cooking'" :size="20" />
+            <Hammer v-else-if="task.skillId === 'smithing' || task.skillId === 'fletching' || task.skillId === 'crafting'" :size="20" />
+            <BookOpen v-else-if="task.skillId === 'runecrafting'" :size="20" />
+            <Sprout v-else :size="20" />
+          </template>
+          <span>{{ actionLabel }}</span>
+        </button>
+        <p class="active-blocked-hint" v-if="hasCostBlockers">
+          Waiting for {{ missingCostLabel }}.
+        </p>
+
+        <div v-if="!task" class="active-empty">
+          <p>Select an unlocked active skill to begin.</p>
+        </div>
+      </section>
+
+      <aside class="active-task-select" v-if="selectableSkills.length > 0">
+        <div class="active-task-select-top">
+          <div>
+            <span class="active-task-select-label">Skill options</span>
+            <h3 class="active-task-select-title">{{ taskSelectLabel }}</h3>
+          </div>
+          <button
+            v-if="canUpgradeTask"
+            type="button"
+            class="active-task-upgrade"
+            :title="upgradeTaskTitle"
+            @click="selectBestTask"
+          >
+            <ArrowUpRight :size="12" />
+            <span>Use {{ upgradeTaskLabel }}</span>
+          </button>
+        </div>
+        <span class="active-task-count">
+          {{ unlockedTasksForSelectedSkill.length }} / {{ tasksForSelectedSkill.length }} unlocked
+        </span>
+        <div class="active-task-options" role="listbox" :aria-label="taskSelectLabel">
+          <button
+            v-for="t in tasksForSelectedSkill"
+            :key="t.id"
+            class="active-task-option"
+            :class="{
+              'active-task-option-current': t.id === lane.taskId,
+              'active-task-option-locked': !canUseTask(t),
+            }"
+            :aria-selected="t.id === lane.taskId"
+            :disabled="!canUseTask(t)"
+            @click="selectTask(t.id)"
+          >
+            <span class="active-task-option-main">
+              <span class="active-task-option-name">{{ taskChoiceLabel(t) }}</span>
+              <span v-if="t.id === lane.taskId" class="active-task-option-current-label">Current</span>
+            </span>
+            <span class="active-task-option-meta">
+              <span class="active-task-option-requirement">
+                <Lock v-if="!canUseTask(t)" :size="11" />
+                Lv.{{ t.levelRequired }}
+              </span>
+              <span :class="{ 'active-task-option-mastered': store.isTaskMastered(t.id) }">
+                {{ taskMasteryLabel(t) }}
+              </span>
+            </span>
+            <span class="active-task-mastery-bar" :title="`${Math.round(store.getTaskMasteryProgress(t.id) * 100)}% through this mastery level`">
+              <span
+                class="active-task-mastery-fill"
+                :style="{ width: masteryProgressWidth(t.id) }"
+              ></span>
+            </span>
+          </button>
+        </div>
+      </aside>
     </div>
   </div>
 </template>
@@ -427,6 +447,11 @@ function taskMasteryLabel(taskDef: TaskDefinition): string {
     : `M.${store.getTaskMasteryLevel(taskDef.id)}`
 }
 
+function masteryProgressWidth(taskId: string): string {
+  if (store.isTaskMastered(taskId)) return '100%'
+  return `${Math.round(store.getTaskMasteryProgress(taskId) * 100)}%`
+}
+
 function formatNumber(value: number): string {
   return Math.floor(value).toLocaleString()
 }
@@ -438,55 +463,46 @@ function formatRate(value: number): string {
 </script>
 
 <style scoped>
-.active-panel {
+.active-page {
+  --active-page-shell-offset: 82px;
   display: grid;
-  grid-template-columns: minmax(240px, 0.85fr) minmax(340px, 1.15fr);
-  align-items: stretch;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  height: calc(100dvh - var(--active-page-shell-offset));
+}
+
+.active-skill-selector {
+  min-width: 0;
+}
+
+.active-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 280px);
   gap: 14px;
-  padding: 14px;
-  border-radius: var(--radius-lg);
-  border: 2px solid var(--em-block-border);
-  background:
-    linear-gradient(180deg, rgba(142, 202, 230, 0.08) 0%, transparent 34%),
-    var(--color-bg-card);
-  box-shadow:
-    0 8px 0 var(--em-block-shadow),
-    inset 0 2px 0 var(--em-block-highlight);
-  position: relative;
-  overflow: hidden;
+  height: 100%;
+  min-height: 0;
 }
 
 .active-core {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 6px 14px 6px 4px;
-}
-
-/* Decorative corner accents */
-.active-panel::before,
-.active-panel::after {
-  content: '';
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border-color: var(--color-accent);
-  opacity: 0.3;
-}
-.active-panel::before {
-  top: 8px;
-  left: 8px;
-  border-top: 2px solid;
-  border-left: 2px solid;
-}
-.active-panel::after {
-  bottom: 8px;
-  right: 8px;
-  border-bottom: 2px solid;
-  border-right: 2px solid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--em-block-border);
+  background:
+    linear-gradient(180deg, rgba(142, 202, 230, 0.08), transparent 52%),
+    rgba(0, 0, 0, 0.12);
+  box-shadow:
+    inset 0 2px 0 var(--em-block-highlight),
+    inset 0 -5px 0 rgba(0, 0, 0, 0.16);
+  overflow: hidden;
 }
 
 .active-header {
@@ -497,37 +513,9 @@ function formatRate(value: number): string {
   min-width: 0;
 }
 
-.active-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-surface);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  color: var(--color-accent-light);
-}
-
-.active-label-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; box-shadow: 0 0 6px var(--color-accent); }
-}
-
 .active-title {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: clamp(22px, 3vw, 34px);
   font-weight: 700;
   color: var(--color-text-primary);
   text-align: center;
@@ -539,8 +527,8 @@ function formatRate(value: number): string {
 }
 
 .active-voxel-scene {
-  width: min(100%, 360px);
-  height: 112px;
+  width: min(100%, 620px);
+  height: clamp(180px, 28vh, 300px);
   position: relative;
   overflow: hidden;
   border: 2px solid var(--em-block-border);
@@ -563,15 +551,15 @@ function formatRate(value: number): string {
 
 .active-voxel-sky {
   position: absolute;
-  inset: 0 0 34px;
+  inset: 0 0 46px;
 }
 
 .active-voxel-sun {
   position: absolute;
-  top: 12px;
-  right: 26px;
-  width: 18px;
-  height: 18px;
+  top: 18px;
+  right: 34px;
+  width: 28px;
+  height: 28px;
   background: #f6d36b;
   border: 2px solid rgba(104, 76, 18, 0.28);
   box-shadow: inset -3px -3px 0 rgba(125, 87, 20, 0.18);
@@ -588,14 +576,14 @@ function formatRate(value: number): string {
 }
 
 .active-voxel-cloud-a {
-  top: 30px;
-  left: 28px;
+  top: 42px;
+  left: 38px;
   width: 12px;
 }
 
 .active-voxel-cloud-b {
-  top: 18px;
-  left: 128px;
+  top: 26px;
+  left: 188px;
   width: 10px;
   opacity: 0.58;
 }
@@ -603,9 +591,9 @@ function formatRate(value: number): string {
 .active-voxel-focus {
   position: absolute;
   left: 50%;
-  bottom: 26px;
-  width: 122px;
-  height: 72px;
+  bottom: 42px;
+  width: 190px;
+  height: 120px;
   transform: translateX(-50%);
 }
 
@@ -619,15 +607,15 @@ function formatRate(value: number): string {
 .active-voxel-material {
   left: 5px;
   bottom: 0;
-  width: 58px;
-  height: 58px;
+  width: 92px;
+  height: 92px;
 }
 
 .active-voxel-tool {
   right: 4px;
   top: 3px;
-  width: 60px;
-  height: 60px;
+  width: 92px;
+  height: 92px;
   transform: rotate(-16deg);
 }
 
@@ -638,13 +626,13 @@ function formatRate(value: number): string {
   bottom: 0;
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  height: 34px;
+  height: 46px;
 }
 
 .active-voxel-block {
   min-width: 0;
   background-repeat: repeat;
-  background-size: 34px 34px;
+  background-size: 46px 46px;
   border-top: 2px solid rgba(255, 255, 255, 0.16);
 }
 
@@ -654,7 +642,7 @@ function formatRate(value: number): string {
   align-items: center;
   gap: 8px;
   width: 100%;
-  max-width: 380px;
+  max-width: 560px;
 }
 
 .active-badge-row {
@@ -721,18 +709,23 @@ function formatRate(value: number): string {
 }
 
 .active-rates {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
   gap: 6px;
   width: 100%;
-  max-width: 360px;
+  max-width: 560px;
 }
 
 .active-rate {
   display: flex;
   justify-content: space-between;
   gap: 6px;
+  min-height: 34px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.12);
   font-size: 13px;
 }
 
@@ -756,10 +749,14 @@ function formatRate(value: number): string {
 }
 
 .active-pace {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding-top: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .active-pace-top,
@@ -807,9 +804,9 @@ function formatRate(value: number): string {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  width: min(100%, 320px);
-  min-height: 44px;
-  padding: 10px 20px;
+  width: min(100%, 420px);
+  min-height: 58px;
+  padding: 12px 24px;
   border-radius: var(--radius-md);
   border: 2px solid var(--em-block-border);
   background: linear-gradient(
@@ -825,8 +822,10 @@ function formatRate(value: number): string {
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.15s ease;
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
   box-shadow: 0 5px 0 var(--em-block-shadow);
 }
 
@@ -897,11 +896,20 @@ function formatRate(value: number): string {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   min-width: 0;
-  padding-left: 16px;
-  border-left: 1px solid var(--color-border);
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  padding: 12px;
+  border: 2px solid var(--em-block-border);
+  border-radius: var(--radius-lg);
+  background: rgba(0, 0, 0, 0.14);
+  box-shadow:
+    inset 0 2px 0 var(--em-block-highlight),
+    inset 0 -5px 0 rgba(0, 0, 0, 0.14);
+  overflow: hidden;
 }
 
 .active-task-select-label {
@@ -911,12 +919,28 @@ function formatRate(value: number): string {
   letter-spacing: 0;
 }
 
+.active-current-summary {
+  color: var(--color-accent-light);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.active-task-select-title {
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
 .active-task-select-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .active-task-select-row {
@@ -932,10 +956,12 @@ function formatRate(value: number): string {
   color: var(--color-text-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  flex-shrink: 0;
 }
 
 .active-task-upgrade {
-  min-height: 26px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -949,6 +975,7 @@ function formatRate(value: number): string {
   font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 
 .active-task-upgrade:hover {
@@ -958,58 +985,125 @@ function formatRate(value: number): string {
 
 .active-task-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-  gap: 4px;
-  max-height: 140px;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 2px 4px 2px 0;
 }
 
 .active-skill-options {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 2px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 8px;
+  overflow-x: visible;
 }
 
 .active-skill-option {
-  flex: 0 0 auto;
-  min-height: 34px;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  min-height: 68px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border);
   background: var(--color-bg-card);
   color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-fast);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  min-width: 0;
+  touch-action: manipulation;
+  text-align: left;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .active-skill-option:hover:not(:disabled) {
   border-color: var(--color-border-hover);
   color: var(--color-text-primary);
+  background: var(--color-bg-card-hover);
 }
 .active-skill-option:disabled {
-  opacity: 0.45;
+  opacity: 0.52;
   cursor: not-allowed;
 }
 .active-skill-option-current {
   border-color: var(--color-accent);
-  background: var(--color-accent-glow);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.08), var(--color-bg-card));
   color: var(--color-accent-light);
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.16);
 }
-.active-skill-option small {
+
+.active-skill-card-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.active-skill-card-sprite {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.22));
+}
+
+.active-skill-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.active-skill-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.active-skill-card-title span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+  font-weight: 800;
+}
+
+.active-skill-card-title small {
+  flex-shrink: 0;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.active-skill-card-bar {
+  height: 6px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.active-skill-card-fill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width 0.3s ease;
 }
 
 .active-task-option {
-  min-height: 48px;
-  padding: 8px 10px;
+  min-height: 58px;
+  padding: 9px 10px 13px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg-card);
@@ -1025,6 +1119,11 @@ function formatRate(value: number): string {
   gap: 6px;
   text-align: left;
   min-width: 0;
+  position: relative;
+  overflow: hidden;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .active-task-option:hover:not(:disabled) {
   border-color: var(--color-border-hover);
@@ -1053,11 +1152,26 @@ function formatRate(value: number): string {
 }
 
 .active-task-option-name {
-  overflow-wrap: anywhere;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-task-option-current-label {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-glow);
+  color: var(--color-accent-light);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .active-task-option-meta {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
   font-size: 10px;
@@ -1065,8 +1179,34 @@ function formatRate(value: number): string {
   font-variant-numeric: tabular-nums;
 }
 
+.active-task-option-requirement {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
 .active-task-option-mastered {
   color: #fde68a;
+}
+
+.active-task-mastery-bar {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  height: 5px;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+}
+
+.active-task-mastery-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #d97706, #fbbf24, #fde68a);
+  box-shadow: 0 -1px 8px rgba(253, 230, 138, 0.42);
+  transition: width 0.3s ease;
 }
 
 .active-empty {
@@ -1077,15 +1217,59 @@ function formatRate(value: number): string {
 }
 
 @media (max-width: 900px) {
-  .active-panel {
+  .active-page {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  .active-workbench {
     grid-template-columns: 1fr;
+    min-height: 0;
+    height: auto;
   }
 
   .active-task-select {
-    padding-left: 0;
-    padding-top: 12px;
-    border-left: none;
-    border-top: 1px solid var(--color-border);
+    max-height: 320px;
+  }
+
+  .active-skill-options {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .active-skill-option {
+    flex: 0 0 176px;
+  }
+}
+
+@media (max-width: 560px) {
+  .active-core {
+    padding: 14px 10px;
+  }
+
+  .active-voxel-scene {
+    height: 178px;
+  }
+
+  .active-rates {
+    grid-template-columns: 1fr;
+  }
+
+  .active-task-select-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .active-task-upgrade {
+    width: 100%;
+  }
+
+  .active-task-option {
+    min-height: 56px;
   }
 }
 </style>

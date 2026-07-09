@@ -41,7 +41,7 @@ defineEmits<{
 const store = useGameStore()
 
 const baseTabs = [
-  { id: 'active', label: 'Active', icon: markRaw(MousePointerClick), indicator: true },
+  { id: 'active', label: 'Active', icon: markRaw(MousePointerClick), indicator: false },
   { id: 'routine', label: 'Routine', icon: markRaw(Clock), indicator: false },
   { id: 'farming', label: 'Farming', icon: markRaw(Sprout), indicator: false },
   { id: 'quests', label: 'Quests', icon: markRaw(ListChecks), indicator: false },

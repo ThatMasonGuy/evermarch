@@ -35,13 +35,7 @@
         <div class="skill-info">
           <div class="skill-title-row">
             <div class="skill-name">{{ skill.def.name }}</div>
-            <div class="skill-title-meta">
-              <div class="skill-level">Lv. {{ skill.level }}</div>
-              <div v-if="skill.trueMastery" class="skill-true-mastery" title="Skill level 99 and every task mastered">
-                <Trophy :size="10" />
-                <span>True</span>
-              </div>
-            </div>
+            <div class="skill-level">Lv. {{ skill.level }}</div>
           </div>
           <div class="skill-bar">
             <div
@@ -49,26 +43,6 @@
               :style="{ width: (skill.progress * 100) + '%', background: skill.def.color }"
             ></div>
           </div>
-          <div class="skill-progression">
-            <span class="skill-current">{{ skill.currentTaskLabel }}</span>
-            <span class="skill-next">{{ skill.nextTaskLabel }}</span>
-          </div>
-          <div class="skill-unlocks">
-            {{ skill.unlockedTaskCount }} / {{ skill.totalTaskCount }} tasks unlocked
-          </div>
-          <div class="skill-mastery-row">
-            <span>Mastery {{ skill.masteredTaskCount }} / {{ skill.totalTaskCount }}</span>
-            <span>Avg Lv. {{ skill.averageMasteryLevel }}</span>
-          </div>
-          <div class="skill-mastery-bar" :title="`${skill.masteryPercent}% task mastery`">
-            <div
-              class="skill-mastery-fill"
-              :style="{ width: skill.masteryPercent + '%' }"
-            ></div>
-          </div>
-        </div>
-        <div class="skill-lane-badge" v-if="getLaneBadge(skill.id)">
-          {{ getLaneBadge(skill.id) }}
         </div>
       </button>
     </div>
@@ -77,7 +51,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { BookOpen, Fish, FlameKindling, Hammer, Pickaxe, Sprout, Swords, TreePine, Trophy } from 'lucide-vue-next'
+import { BookOpen, Fish, FlameKindling, Hammer, Pickaxe, Sprout, Swords, TreePine } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import { SKILL_LIST, type SkillDefinition, type SkillId } from '../data/skills'
 import { getTaskById, getTasksForSkill, type TaskDefinition } from '../data/tasks'
@@ -99,8 +73,6 @@ const skillData = computed(() =>
     const tasks = getTasksForSkill(def.id)
     const unlockedTasks = tasks.filter((task) => level >= task.levelRequired)
     const currentTask = unlockedTasks[unlockedTasks.length - 1] ?? null
-    const nextTask = tasks.find((task) => level < task.levelRequired) ?? null
-    const mastery = store.getSkillMasterySummary(def.id)
 
     return {
       id: def.id,
@@ -108,16 +80,8 @@ const skillData = computed(() =>
       sprite: spriteForSkill(def.id),
       level,
       progress: store.getSkillProgress(def.id),
-      currentTaskLabel: currentTask ? `Current: ${taskChoiceLabel(currentTask)}` : 'No task unlocked',
-      nextTaskLabel: nextTask ? `Next: ${taskChoiceLabel(nextTask)} at Lv. ${nextTask.levelRequired}` : 'All tasks unlocked',
       currentTaskId: currentTask?.id ?? null,
       currentTaskName: currentTask ? taskChoiceLabel(currentTask) : null,
-      unlockedTaskCount: unlockedTasks.length,
-      totalTaskCount: tasks.length,
-      masteredTaskCount: mastery.masteredTasks,
-      averageMasteryLevel: mastery.averageLevel,
-      masteryPercent: mastery.percent,
-      trueMastery: mastery.trueMastery,
     }
   })
 )
@@ -129,11 +93,6 @@ function getIdleSkillId(): SkillId | null {
 }
 
 function isInIdleLane(id: SkillId): boolean { return getIdleSkillId() === id }
-
-function getLaneBadge(id: SkillId): string | null {
-  if (isInIdleLane(id)) return 'Selected'
-  return null
-}
 
 function selectRoutineSkill(skill: { currentTaskId: string | null }) {
   if (!skill.currentTaskId) return
@@ -177,16 +136,17 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 .skills-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 8px;
 }
 
 .skill-card {
   width: 100%;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
-  padding: 12px;
+  min-height: 68px;
+  padding: 10px;
   border-radius: var(--radius-md);
   border: 2px solid var(--color-border);
   background: var(--color-bg-card);
@@ -196,14 +156,18 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   transition: all var(--transition-fast);
   position: relative;
   cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .skill-card:hover {
   border-color: var(--color-border-hover);
   background: var(--color-bg-card-hover);
 }
 .skill-card-idle {
-  border-color: rgba(251, 191, 36, 0.3);
-  box-shadow: 0 0 8px rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.48);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.08), var(--color-bg-card));
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.16);
 }
 
 .skill-card:disabled {
@@ -238,58 +202,39 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 .skill-title-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-right: 52px;
 }
 
 .skill-name {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--color-text-primary);
-  overflow-wrap: anywhere;
-}
-
-.skill-title-meta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 5px;
-  flex-wrap: wrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .skill-level {
-  font-size: 11px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 800;
   color: var(--color-text-muted);
   white-space: nowrap;
 }
 
-.skill-true-mastery {
-  min-height: 16px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 5px;
-  border-radius: var(--radius-sm);
-  background: rgba(253, 230, 138, 0.12);
-  color: #fde68a;
-  font-size: 9px;
-  font-weight: 800;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .skill-bar {
-  height: 3px;
+  height: 6px;
   background: var(--color-bg-elevated);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .skill-bar-fill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   transition: width 0.3s ease;
 }
 

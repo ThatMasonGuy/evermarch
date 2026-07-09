@@ -31,7 +31,10 @@
     <div class="em-topbar-right">
       <button
         class="em-topbar-btn em-cloud-sync-btn"
-        :class="{ 'em-cloud-sync-btn-busy': props.cloudBusy }"
+        :class="{
+          'em-cloud-sync-btn-busy': props.cloudBusy,
+          'em-cloud-sync-btn-stale': props.cloudSyncStale,
+        }"
         :title="props.cloudSyncTitle"
         :disabled="props.cloudSyncDisabled"
         @click="$emit('backup')"
@@ -56,11 +59,13 @@ const props = withDefaults(defineProps<{
   cloudSyncTitle?: string
   cloudSyncDisabled?: boolean
   cloudBusy?: boolean
+  cloudSyncStale?: boolean
 }>(), {
   cloudSyncLabel: 'No sync',
   cloudSyncTitle: 'Save to Cloud',
   cloudSyncDisabled: false,
   cloudBusy: false,
+  cloudSyncStale: false,
 })
 
 defineEmits<{
@@ -189,6 +194,13 @@ const store = useGameStore()
 
 .em-cloud-sync-btn-busy {
   color: var(--color-accent-light);
+}
+
+.em-cloud-sync-btn-stale:not(:disabled),
+.em-cloud-sync-btn-stale:disabled {
+  border-color: rgba(248, 113, 113, 0.72);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.2);
 }
 
 .em-cloud-sync-text {

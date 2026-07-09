@@ -69,7 +69,7 @@
           class="save-card save-card-cloud animate-fade-in-up"
         >
           <div class="save-card-header">
-            <div class="save-card-name">Cloud Backup</div>
+            <div class="save-card-name">{{ cloudInfo?.saveName ?? 'Cloud Backup' }}</div>
             <div class="save-card-badge save-card-badge-cloud">
               <Cloud :size="11" />
               Remote
@@ -78,11 +78,33 @@
           <div class="save-card-desc">
             <p v-if="cloudLoading">Checking for cloud backup...</p>
             <p v-else-if="cloudAvailable">
-              A cloud backup exists. Restore it to this device to continue where you left off on another device.
+              {{ cloudComparisonLabel }}
             </p>
             <p v-else>
               No cloud backup found. Play locally and back up from in-game settings.
             </p>
+          </div>
+          <div class="save-card-meta" v-if="cloudInfo">
+            <div class="save-meta-row">
+              <TrendingUp :size="13" />
+              <span>Total Level {{ cloudInfo.totalLevel }}</span>
+            </div>
+            <div class="save-meta-row">
+              <Clock :size="13" />
+              <span>{{ formatPlaytime(cloudInfo.playtime) }}</span>
+            </div>
+            <div class="save-meta-row">
+              <Calendar :size="13" />
+              <span>{{ formatDate(cloudInfo.lastSavedAt) }}</span>
+            </div>
+            <div class="save-meta-row">
+              <Coins :size="13" />
+              <span>{{ cloudInfo.gold.toLocaleString() }} gold</span>
+            </div>
+            <div class="save-meta-row save-meta-row-wide">
+              <Cloud :size="13" />
+              <span>Synced {{ formatDate(cloudInfo.lastCloudSyncedAt ?? cloudInfo.lastSavedAt) }}</span>
+            </div>
           </div>
           <div class="save-card-footer" v-if="cloudAvailable">
             <button class="save-cloud-btn" @click.stop="restoreFromCloud">
@@ -158,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ArrowLeft, Compass, TrendingUp, Clock, Calendar, Coins,
@@ -168,7 +190,8 @@ import {
 import { useAuthStore } from '@/platform/stores/authStore'
 import { isFirebaseEnabled } from '@/platform/services/firebase'
 import { useGameStore } from '../stores/gameStore'
-import { loadLocal, saveLocal, deleteLocalSave, pullFromCloud, hasCloudSave } from '../engine/saveSystem'
+import { loadLocal, saveLocal, deleteLocalSave, pullFromCloud } from '../engine/saveSystem'
+import type { GameSaveData } from '../stores/gameStore'
 import { levelForXp } from '../data/xp'
 
 const router = useRouter()
@@ -180,12 +203,24 @@ const localInfo = ref({
   saveName: '',
   playtime: 0,
   lastSavedAt: 0,
+  lastCloudSyncedAt: null as number | null,
   totalLevel: 0,
   gold: 0,
 })
 
 const cloudLoading = ref(false)
 const cloudAvailable = ref(false)
+const cloudSaveData = ref<GameSaveData | null>(null)
+const cloudInfo = computed(() => cloudSaveData.value ? saveInfoFromData(cloudSaveData.value) : null)
+const cloudComparisonLabel = computed(() => {
+  if (!cloudInfo.value) return 'No cloud backup found.'
+  if (!hasLocal.value) return 'Cloud backup found. Restore it to this device to continue online progress.'
+
+  const diffMs = cloudInfo.value.lastSavedAt - localInfo.value.lastSavedAt
+  if (Math.abs(diffMs) < 60_000) return 'Cloud and local saves were updated around the same time.'
+  if (diffMs > 0) return `Cloud is ${formatDurationDelta(diffMs)} newer than local.`
+  return `Cloud is ${formatDurationDelta(Math.abs(diffMs))} older than local.`
+})
 
 const showCreateModal = ref(false)
 const newSaveName = ref('')
@@ -196,22 +231,28 @@ onMounted(async () => {
   const data = loadLocal()
   if (data) {
     hasLocal.value = true
-    localInfo.value = {
-      saveName: data.saveName ?? 'Adventure',
-      playtime: data.playtime ?? 0,
-      lastSavedAt: data.lastSavedAt ?? 0,
-      totalLevel: (data.skills ?? []).reduce((sum, s) => sum + levelForXp(s.xp), 0),
-      gold: data.gold ?? 0,
-    }
+    localInfo.value = saveInfoFromData(data)
   }
 
   // Check cloud save
   if (authStore.user) {
     cloudLoading.value = true
-    cloudAvailable.value = await hasCloudSave(authStore.user.uid)
+    cloudSaveData.value = await pullFromCloud(authStore.user.uid)
+    cloudAvailable.value = cloudSaveData.value !== null
     cloudLoading.value = false
   }
 })
+
+function saveInfoFromData(data: GameSaveData) {
+  return {
+    saveName: data.saveName ?? 'Adventure',
+    playtime: data.playtime ?? 0,
+    lastSavedAt: data.lastSavedAt ?? 0,
+    lastCloudSyncedAt: data.lastCloudSyncedAt ?? null,
+    totalLevel: (data.skills ?? []).reduce((sum, s) => sum + levelForXp(s.xp), 0),
+    gold: data.gold ?? 0,
+  }
+}
 
 function formatPlaytime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -228,6 +269,18 @@ function formatDate(ts: number): string {
   })
 }
 
+function formatDurationDelta(ms: number): string {
+  const minutes = Math.floor(ms / 60_000)
+  if (minutes < 1) return 'less than 1m'
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  if (hours < 24) return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`
+  const days = Math.floor(hours / 24)
+  const remainingHours = hours % 24
+  return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`
+}
+
 function continueLocal() {
   router.push('/play')
 }
@@ -240,7 +293,7 @@ async function restoreFromCloud() {
     if (!confirm('This will overwrite your local save with the cloud backup. Continue?')) return
   }
 
-  const data = await pullFromCloud(authStore.user.uid)
+  const data = cloudSaveData.value ?? await pullFromCloud(authStore.user.uid)
   if (data) {
     gameStore.deserialize(data)
     saveLocal()
@@ -433,6 +486,10 @@ function handleCreateSave() {
   gap: 6px;
   font-size: 12px;
   color: var(--color-text-secondary);
+}
+
+.save-meta-row-wide {
+  grid-column: 1 / -1;
 }
 
 .save-card-desc {

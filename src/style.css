@@ -250,6 +250,16 @@ a:hover {
   color: var(--color-accent);
 }
 
+button,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+[data-theme="evermarch"] button,
+[data-theme="evermarch"] [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ── Glow Animations ── */
 
 @keyframes glow-pulse {

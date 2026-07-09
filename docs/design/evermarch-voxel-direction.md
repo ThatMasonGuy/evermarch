@@ -76,13 +76,17 @@ The UI can remain dark for idle-game focus, but it should be warmed by earth, st
 
 ### Active Lane
 
-The active lane should eventually support a small action scene or tool-focused block:
+The active lane should become the place where Evermarch turns idle RPG tasks into small tactile loops. Mining is the first committed prototype and is specified in `docs/design/active-mining-minigame.md`.
+
+The current active lane should evolve from a tool-focused scene into concrete action boards:
 
 - Current task sprite or material tile
 - Tool sprite for the action
 - Pace meter tied to active rhythm
 - Short feedback when an action lands
 - Clear blocker state when materials are missing
+
+For mining specifically, the target is a face-on block grid where players break every visible block to dig one meter deeper, find ore veins, and occasionally discover active-only boosts like TNT.
 
 ### Routine Lane
 
@@ -147,6 +151,6 @@ Possible future migration candidates can include a hosted Postgres stack, a cust
 1. Establish this design language and asset intake rules.
 2. Swap the Evermarch theme tokens from mystical emerald to block-world material colors.
 3. Use real voxel sprites in the active lane and inventory.
-4. Add a blocky world/route visual layer without changing save schema.
-5. Introduce sprite atlas loading once the sprite count grows.
-6. Prototype a small active-action scene after the UI language is stable.
+4. Prototype the active mining block-face minigame from `docs/design/active-mining-minigame.md`.
+5. Add a blocky world/route visual layer without changing save schema.
+6. Introduce sprite atlas loading once the sprite count grows.

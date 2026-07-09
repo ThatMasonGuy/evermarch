@@ -995,13 +995,21 @@ function formatRate(value: number): string {
 }
 
 .active-skill-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
   gap: 8px;
-  overflow-x: visible;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-gutter: stable;
 }
 
 .active-skill-option {
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 176px;
   min-height: 68px;
   padding: 10px;
   border-radius: var(--radius-md);
@@ -1057,7 +1065,7 @@ function formatRate(value: number): string {
 }
 
 .active-skill-card-info {
-  flex: 1;
+  flex: 1 0 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -1073,8 +1081,6 @@ function formatRate(value: number): string {
 
 .active-skill-card-title span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-text-primary);
   font-weight: 800;
@@ -1235,14 +1241,7 @@ function formatRate(value: number): string {
   }
 
   .active-skill-options {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
     padding-bottom: 2px;
-  }
-
-  .active-skill-option {
-    flex: 0 0 176px;
   }
 }
 

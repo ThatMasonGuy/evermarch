@@ -112,6 +112,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 
 <style scoped>
 .skills-panel {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -135,13 +136,21 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .skills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
   gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-gutter: stable;
 }
 
 .skill-card {
-  width: 100%;
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 176px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -193,7 +202,7 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
 }
 
 .skill-info {
-  flex: 1;
+  flex: 1 0 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -212,8 +221,6 @@ function taskChoiceLabel(taskDef: TaskDefinition): string {
   font-weight: 800;
   color: var(--color-text-primary);
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

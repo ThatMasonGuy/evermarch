@@ -177,8 +177,9 @@ function masteryProgressWidth(taskId: string): string {
   --routine-theme-soft: rgba(79, 159, 69, 0.12);
   --routine-page-shell-offset: 82px;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
-  gap: 14px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
   min-height: 0;
   height: calc(100dvh - var(--routine-page-shell-offset));
 }
@@ -255,9 +256,12 @@ function masteryProgressWidth(taskId: string): string {
 }
 
 .routine-skills {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: hidden;
 }
 
 .routine-section-heading {
@@ -278,7 +282,9 @@ function masteryProgressWidth(taskId: string): string {
   grid-template-columns: minmax(0, 1fr) minmax(230px, 280px);
   gap: 14px;
   align-items: stretch;
+  min-width: 0;
   min-height: 0;
+  height: 100%;
 }
 
 .routine-play-panel,
@@ -509,9 +515,10 @@ function masteryProgressWidth(taskId: string): string {
   transition: width 0.3s ease;
 }
 
-@media (max-width: 680px) {
+@media (max-width: 900px) {
   .routine-panel {
     display: flex;
+    flex-direction: column;
     height: auto;
     min-height: 0;
   }

@@ -63,21 +63,21 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 [data-theme="evermarch"] {
-  --color-bg-deep: #15100a;
-  --color-bg-surface: #21160d;
-  --color-bg-card: #2d2115;
-  --color-bg-card-hover: #38291a;
-  --color-bg-elevated: #463626;
-  --color-border: rgba(232, 198, 132, 0.16);
-  --color-border-hover: rgba(246, 211, 107, 0.34);
-  --color-text-primary: #f8f1df;
-  --color-text-secondary: #d8c39c;
-  --color-text-muted: #a78d63;
-  --color-text-faint: #5c442a;
-  --color-accent: #8bc34a;
-  --color-accent-light: #c7f06f;
+  --color-bg-deep: #121711;
+  --color-bg-surface: #20291f;
+  --color-bg-card: #2b3429;
+  --color-bg-card-hover: #354230;
+  --color-bg-elevated: #444d3f;
+  --color-border: rgba(218, 217, 178, 0.18);
+  --color-border-hover: rgba(246, 211, 107, 0.36);
+  --color-text-primary: #faf4df;
+  --color-text-secondary: #ded8b7;
+  --color-text-muted: #b7b184;
+  --color-text-faint: #6f7257;
+  --color-accent: #8bcf4b;
+  --color-accent-light: #c9f06f;
   --color-accent-dim: #4f9f45;
-  --color-accent-glow: rgba(139, 195, 74, 0.14);
+  --color-accent-glow: rgba(139, 207, 75, 0.16);
   --color-accent-glow-strong: rgba(246, 211, 107, 0.32);
   --font-display: 'Inter', system-ui, -apple-system, sans-serif;
   --radius-sm: 2px;
@@ -86,16 +86,16 @@
   --radius-xl: 8px;
   --em-sky: #8ecae6;
   --em-sky-light: #d7f3ff;
-  --em-grass: #8bc34a;
+  --em-grass: #8bcf4b;
   --em-grass-dark: #4f9f45;
-  --em-dirt: #8a5a2b;
-  --em-wood: #c47a3c;
-  --em-stone: #6f7670;
-  --em-stone-light: #a9b0a6;
+  --em-dirt: #927b52;
+  --em-wood: #ad8754;
+  --em-stone: #737d74;
+  --em-stone-light: #b5bcaf;
   --em-gold: #f6d36b;
   --em-water: #2f80b7;
-  --em-block-border: #5a3d22;
-  --em-block-shadow: #0c0805;
+  --em-block-border: #535d48;
+  --em-block-shadow: #080c08;
   --em-block-highlight: rgba(255, 255, 255, 0.16);
 }
 

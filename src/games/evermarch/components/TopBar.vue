@@ -84,7 +84,6 @@ const store = useGameStore()
   padding: 8px 16px;
   background: linear-gradient(180deg, var(--color-bg-elevated), var(--color-bg-surface));
   border-bottom: 2px solid var(--em-block-border);
-  box-shadow: 0 3px 0 var(--em-block-shadow);
   z-index: 100;
   gap: 12px;
   flex-shrink: 0;

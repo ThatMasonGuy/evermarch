@@ -289,7 +289,7 @@ async function runCloudBackup(options: { ignoreCooldown?: boolean; automatic?: b
   background:
     linear-gradient(rgba(246, 211, 107, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(246, 211, 107, 0.035) 1px, transparent 1px),
-    linear-gradient(180deg, #171c16 0%, var(--color-bg-deep) 34%, #100b07 100%);
+    linear-gradient(180deg, #25301f 0%, var(--color-bg-deep) 34%, #121711 100%);
   background-size: 32px 32px, 32px 32px, auto;
   color: var(--color-text-primary);
   display: flex;
@@ -306,7 +306,6 @@ async function runCloudBackup(options: { ignoreCooldown?: boolean; automatic?: b
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  border-top: 2px solid rgba(255, 255, 255, 0.04);
 }
 
 .em-layout-log-collapsed {

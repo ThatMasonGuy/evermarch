@@ -322,7 +322,7 @@ function handleCreateSave() {
   background:
     linear-gradient(rgba(246, 211, 107, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(246, 211, 107, 0.035) 1px, transparent 1px),
-    linear-gradient(180deg, #172418 0%, var(--color-bg-deep) 38%, #100b07 100%);
+    linear-gradient(180deg, #25301f 0%, var(--color-bg-deep) 38%, #121711 100%);
   background-size: 32px 32px, 32px 32px, auto;
   color: var(--color-text-primary);
   display: flex;

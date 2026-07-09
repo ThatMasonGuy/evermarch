@@ -89,19 +89,47 @@
           </div>
         </template>
 
-        <div v-else class="crop-picker">
-          <button
-            v-for="crop in unlockedCropOptions"
-            :key="crop.task.id"
-            type="button"
-            class="crop-option"
-            @click="store.plantFarmingPlot(field.plot.id, crop.task.id)"
-          >
-            <img v-if="crop.sprite" :src="crop.sprite" alt="" class="crop-option-sprite" />
-            <Sprout v-else :size="16" />
-            <span>{{ crop.label }}</span>
-            <small>{{ crop.durationLabel }}</small>
-          </button>
+        <div v-else class="empty-field">
+          <div class="empty-field-plot" aria-hidden="true">
+            <span v-for="tile in 16" :key="tile" class="empty-field-tile"></span>
+          </div>
+
+          <div class="crop-select-card">
+            <label class="crop-select-label" :for="`crop-select-${field.plot.id}`">Crop</label>
+            <div class="crop-select-control">
+              <img
+                v-if="selectedCropOption(field.plot.id)?.sprite"
+                :src="selectedCropOption(field.plot.id)?.sprite ?? ''"
+                alt=""
+                class="crop-select-sprite"
+              />
+              <Sprout v-else :size="16" />
+              <select
+                :id="`crop-select-${field.plot.id}`"
+                class="crop-select"
+                :value="selectedCropId(field.plot.id)"
+                @change="handleCropSelect(field.plot.id, $event)"
+              >
+                <option
+                  v-for="crop in unlockedCropOptions"
+                  :key="crop.task.id"
+                  :value="crop.task.id"
+                >
+                  {{ crop.label }} - {{ crop.durationLabel }} - {{ crop.yieldLabel }}
+                </option>
+              </select>
+              <ChevronDown class="crop-select-chevron" :size="16" aria-hidden="true" />
+            </div>
+            <button
+              type="button"
+              class="field-action field-action-primary crop-plant-btn"
+              :disabled="!selectedCropOption(field.plot.id)"
+              @click="plantSelectedCrop(field.plot.id)"
+            >
+              <Sprout :size="14" />
+              <span>Plant</span>
+            </button>
+          </div>
         </div>
       </article>
     </section>
@@ -138,7 +166,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { Bell, Lock, PackageCheck, Repeat2, Rows3, Sprout, Wheat } from 'lucide-vue-next'
+import { Bell, ChevronDown, Lock, PackageCheck, Repeat2, Rows3, Sprout, Wheat } from 'lucide-vue-next'
 import { useGameStore, type FarmingPlotState } from '../stores/gameStore'
 import { getTasksForSkill, getTaskById, type TaskDefinition } from '../data/tasks'
 import { getResourceDefinition } from '../data/resources'
@@ -146,6 +174,7 @@ import { spriteForResource } from '../assets/visualAssets'
 
 const store = useGameStore()
 const nowMs = ref(Date.now())
+const selectedCropByPlot = ref<Record<string, string>>({})
 let timer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
@@ -182,6 +211,8 @@ const cropOptions = computed(() =>
 )
 
 const unlockedCropOptions = computed(() => cropOptions.value.filter((crop) => !crop.locked))
+
+const defaultCropId = computed(() => unlockedCropOptions.value[0]?.task.id ?? '')
 
 const fieldViews = computed(() =>
   store.farmingPlots.map((plot, index) => buildFieldView(plot, index))
@@ -235,6 +266,33 @@ function primaryResource(task: TaskDefinition) {
 function taskChoiceLabel(task: TaskDefinition | null): string {
   if (!task) return 'Open soil'
   return task.name.replace(/^(Grow)\s+/, '')
+}
+
+function selectedCropId(plotId: string): string {
+  const selectedId = selectedCropByPlot.value[plotId]
+  if (selectedId && unlockedCropOptions.value.some((crop) => crop.task.id === selectedId)) {
+    return selectedId
+  }
+  return defaultCropId.value
+}
+
+function selectedCropOption(plotId: string) {
+  const cropId = selectedCropId(plotId)
+  return unlockedCropOptions.value.find((crop) => crop.task.id === cropId) ?? null
+}
+
+function handleCropSelect(plotId: string, event: Event): void {
+  const cropId = (event.target as HTMLSelectElement).value
+  selectedCropByPlot.value = {
+    ...selectedCropByPlot.value,
+    [plotId]: cropId,
+  }
+}
+
+function plantSelectedCrop(plotId: string): void {
+  const cropId = selectedCropId(plotId)
+  if (!cropId) return
+  store.plantFarmingPlot(plotId, cropId)
 }
 
 function formatDuration(ms: number): string {
@@ -321,9 +379,9 @@ function formatDuration(ms: number): string {
   border: 2px solid var(--em-block-border);
   border-radius: var(--radius-md);
   background:
-    linear-gradient(180deg, rgba(139, 92, 43, 0.22), transparent 56px),
-    linear-gradient(90deg, rgba(196, 122, 60, 0.08) 1px, transparent 1px),
-    linear-gradient(rgba(196, 122, 60, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(139, 207, 75, 0.1), transparent 56px),
+    linear-gradient(90deg, rgba(181, 188, 175, 0.09) 1px, transparent 1px),
+    linear-gradient(rgba(181, 188, 175, 0.09) 1px, transparent 1px),
     var(--color-bg-card);
   background-size: auto, 28px 28px, 28px 28px, auto;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.06), inset 0 -3px 0 rgba(0, 0, 0, 0.22);
@@ -413,14 +471,14 @@ function formatDuration(ms: number): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgba(83, 50, 26, 0.86);
+  border: 2px solid rgba(83, 93, 72, 0.86);
   border-radius: var(--radius-sm);
   color: #a3e635;
   background:
     linear-gradient(180deg, rgba(79, 159, 69, 0.5) 0 16px, transparent 16px),
-    linear-gradient(90deg, rgba(83, 50, 26, 0.28) 1px, transparent 1px),
-    linear-gradient(rgba(83, 50, 26, 0.28) 1px, transparent 1px),
-    #6f4324;
+    linear-gradient(90deg, rgba(83, 93, 72, 0.24) 1px, transparent 1px),
+    linear-gradient(rgba(83, 93, 72, 0.24) 1px, transparent 1px),
+    var(--em-dirt);
   background-size: auto, 18px 18px, 18px 18px, auto;
   box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.1), inset 0 -4px 0 rgba(0, 0, 0, 0.2);
 }
@@ -520,57 +578,135 @@ function formatDuration(ms: number): string {
   opacity: 0.45;
 }
 
-.crop-picker {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-  gap: 7px;
-  margin-top: auto;
+.empty-field {
+  flex: 1;
+  min-height: 158px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.crop-option {
-  min-height: 54px;
+.empty-field-plot {
+  flex: 1;
+  min-height: 104px;
   display: grid;
-  grid-template-columns: 22px 1fr;
-  grid-template-areas:
-    "icon name"
-    "icon time";
-  align-items: center;
-  column-gap: 7px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 10px;
+  border: 2px solid color-mix(in srgb, var(--em-block-border), var(--em-grass-dark) 24%);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, rgba(139, 195, 74, 0.38) 0 13px, transparent 13px),
+    linear-gradient(135deg, rgba(246, 211, 107, 0.12), transparent 42%),
+    #8f7c57;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -5px 0 rgba(38, 46, 28, 0.22);
+}
+
+.empty-field-tile {
+  min-width: 0;
+  border: 1px solid rgba(82, 91, 65, 0.42);
+  border-radius: 1px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent 44%),
+    linear-gradient(90deg, rgba(85, 79, 52, 0.22) 0 46%, transparent 46% 58%, rgba(85, 79, 52, 0.18) 58%),
+    #957f57;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -2px 0 rgba(40, 48, 32, 0.28);
+}
+
+.empty-field-tile:nth-child(3n) {
+  background-color: #a48d61;
+}
+
+.empty-field-tile:nth-child(4n) {
+  background-color: #867350;
+}
+
+.crop-select-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
   padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-border-hover), transparent 34%);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+    var(--color-bg-surface);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.05);
+}
+
+.crop-select-label {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.crop-select-control {
+  position: relative;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 32px 0 9px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
-  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  background:
+    linear-gradient(180deg, var(--color-bg-card-hover), var(--color-bg-card));
+}
+
+.crop-select-control svg {
+  flex-shrink: 0;
+  color: var(--em-grass);
+}
+
+.crop-select {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  color: var(--color-text-primary);
+  background: transparent;
   font-family: var(--font-body);
-  text-align: left;
+  font-size: 13px;
+  font-weight: 900;
   cursor: pointer;
 }
 
-.crop-option:hover {
-  border-color: var(--color-border-hover);
-  color: var(--color-text-primary);
-  background: var(--color-bg-card-hover);
+.crop-select:focus-visible {
+  outline: 2px solid rgba(246, 211, 107, 0.58);
+  outline-offset: 2px;
 }
 
-.crop-option span {
-  grid-area: name;
-  font-size: 12px;
-  font-weight: 900;
-  overflow-wrap: anywhere;
+.crop-select option {
+  color: #f8f1df;
+  background: var(--color-bg-surface);
 }
 
-.crop-option small {
-  grid-area: time;
+.crop-select-chevron {
+  position: absolute;
+  right: 9px;
+  pointer-events: none;
   color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 800;
 }
 
-.crop-option-sprite {
-  grid-area: icon;
+.crop-plant-btn {
+  width: 100%;
+}
+
+.crop-option-sprite,
+.crop-select-sprite {
   width: 22px;
   height: 22px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .crop-book {

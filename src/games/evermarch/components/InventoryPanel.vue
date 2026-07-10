@@ -798,7 +798,38 @@ function formatTimestamp(value: number | null): string {
 }
 
 .inv-sort select {
+  min-height: 28px;
+  padding: 0 28px 0 9px;
+  appearance: none;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-sm) - 2px);
+  background-color: var(--color-bg-surface);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%),
+    linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 13px) 11px,
+    calc(100% - 8px) 11px;
+  background-repeat: no-repeat;
+  background-size: 5px 5px, 5px 5px;
+  color: var(--color-text-primary);
+  font-weight: 700;
   cursor: pointer;
+}
+
+.inv-sort select:hover {
+  border-color: var(--color-border-hover);
+  background-color: var(--color-bg-card-hover);
+}
+
+.inv-sort select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-glow);
+}
+
+.inv-sort select option {
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
 }
 
 .inv-categories {

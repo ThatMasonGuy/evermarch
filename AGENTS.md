@@ -19,7 +19,7 @@ Evermarch is the authenticated idle RPG app mounted at `/evermarch/app/` on `pla
 
 ## Live Update Pipeline
 
-- To update the live game, finish the Evermarch work, run `npm run build`, commit, push `main`, then run the **Deploy Evermarch to Play Site** workflow in this repo's GitHub Actions tab.
+- To update the live game, complete the issue verification and release-preparation workflow, ensure the intended release commit is on `main`, run `npm run build`, push `main`, then run the **Deploy Evermarch to Play Site** workflow in this repo's GitHub Actions tab. After a successful deployment, tag the exact deployed commit and publish the corresponding GitHub Release.
 - The workflow file is `.github/workflows/deploy-evermarch-to-play-site.yml`.
 - The workflow uses Node.js 24, runs `npm ci`, runs `npm run build -- --base=/evermarch/app/`, then sends a `repository_dispatch` event to `ThatMasonGuy/play-tempest-studios`.
 - The dispatch payload includes the exact Evermarch commit SHA. The play-site repo must build that exact commit, not just whatever `main` points at later.
@@ -32,9 +32,184 @@ Evermarch is the authenticated idle RPG app mounted at `/evermarch/app/` on `pla
 - Keep shared auth/Firebase integration under `src/platform`.
 - Validate meaningful changes with `npm run build`.
 - If dependencies change, run `npm install` and keep `package-lock.json` in sync.
-- After any major change or new feature, commit a verified checkpoint promptly. Multiple commits during one working turn are acceptable when they create useful rollback points.
+- For tracked issue work, keep one final issue-scoped commit on `main`. Direct-to-main work should be committed once after validation. Pull-request branches may contain useful checkpoint commits, but must be squash-merged so `main` receives one focused commit for the issue.
 - Preserve user work already in the tree.
 - Do not credit external code-generation tools in commits, docs, comments, or generated project content.
+
+## Issue, Project, and Release Workflow
+
+### Issue and Project Tracking
+
+- GitHub Issues are the source of truth for bugs, additions, and tracked development work.
+- The GitHub Project named `Evermarch` is the workflow and longitudinal project view.
+- Required Project statuses are:
+  - `Ready`
+  - `In progress`
+  - `Needs verification`
+  - `Done`
+- Use GitHub CLI or the GitHub API to read issues, comments, labels, milestones, pull requests, and Project status.
+- If GitHub authentication or Project permissions are unavailable, do not silently skip bookkeeping. Report the missing operation clearly.
+
+When working from the issue queue:
+
+1. Select one open issue from the `Ready` status.
+2. Read the entire issue and all existing comments before editing.
+3. Confirm the issue contains enough information to implement and validate.
+4. Move the issue to `In progress` before changing code.
+5. Keep the implementation scoped to that issue unless closely related work is explicitly required.
+6. Do not combine unrelated issues into one commit or pull request.
+
+### Direct Commits and Pull Requests
+
+- Small-to-medium, isolated, backward-compatible fixes and additions should be committed directly to `main`.
+- Major, breaking, risky, or cross-cutting changes must use a dedicated branch and pull request.
+- Changes requiring a pull request include:
+  - save-format or migration changes
+  - authentication, Firebase, or cloud-save architecture changes
+  - deployment pipeline changes
+  - major dependency or framework upgrades
+  - broad engine or platform refactors
+  - changes spanning several systems
+  - changes that could break existing saves or live behaviour
+- Pull requests created by an agent must not be merged without explicit human approval.
+- Checkpoint commits are acceptable on a pull-request branch, but the pull request should be squash-merged so `main` receives one focused commit for the issue.
+- Direct-to-main issue work should produce one focused commit after validation.
+- Reference the issue in the commit subject using `(#<issue-number>)`.
+- Do not use automatic closing keywords such as `Fixes`, `Closes`, or `Resolves`.
+- Do not close issues automatically.
+
+Example commit:
+
+```text
+fix(inventory): prevent filtered values appearing in All (#1)
+```
+
+### Changelog and Patch Notes
+
+- `CHANGELOG.md` is the technical and project-facing record of changes.
+- Every completed issue must add an entry under `## Unreleased`.
+- Categorise changelog entries under the appropriate heading:
+  - `Added`
+  - `Changed`
+  - `Fixed`
+  - `Removed`
+  - `Security`
+- Every changelog entry must reference its issue number.
+- `docs/patch-notes/UNRELEASED.md` is the ongoing player-facing patch-notes document.
+- Create these files if they do not exist.
+- Add an entry to the player-facing patch notes only when the change affects players.
+- Patch notes should describe observable behaviour and avoid implementation details, internal refactors, or developer-only maintenance.
+- Changelog and patch-note changes must be included in the same commit or pull request as the issue implementation.
+
+### Agent Completion and Human Verification
+
+Before presenting an issue as completed:
+
+1. Run the relevant validation, including `npm run build` for meaningful changes.
+2. Confirm the issue requirements have been addressed.
+3. Update `CHANGELOG.md`.
+4. Update `docs/patch-notes/UNRELEASED.md` when the change is player-visible.
+5. Commit the direct-to-main change, or push and open the required pull request.
+6. Add a comment to the issue containing:
+   - the root cause or explanation of what was wrong
+   - what changed
+   - validation or tests performed
+   - the commit SHA for direct commits
+   - the pull request link and head commit SHA for pull-request work
+7. Move the issue to `Needs verification`.
+
+The agent must not:
+
+- close the issue
+- move the issue to `Done`
+- claim human verification has occurred
+- merge its own pull request without explicit approval
+
+A human reviews work in `Needs verification`. Once accepted, the human closes the issue. The Project may then automatically move the closed issue to `Done`.
+
+If validation fails or the issue is blocked:
+
+- leave the issue open
+- do not move it to `Needs verification`
+- comment with the failure or blocker
+- do not present the work as complete
+
+### Release Milestones
+
+- Use GitHub milestones to associate issues and pull requests with their intended release.
+- Assign an issue to its target release milestone when that release is known.
+- Only human-verified, closed issues in the `Done` Project status may be included in a live release.
+- Close the release milestone after the corresponding GitHub Release has been published.
+
+### Versioning
+
+- Every successful deployment to the live Evermarch app is a versioned GitHub Release.
+- Use version tags in the form `vMAJOR.MINOR.PATCH`.
+- Increment:
+  - `PATCH` for compatible bug fixes and polish-only releases
+  - `MINOR` for backward-compatible features or substantial additions
+  - `MAJOR` for incompatible production changes
+- While the project remains below `v1.0.0`, breaking pre-release changes may increment the minor version instead of the major version.
+- Every live deployment must receive a unique version.
+- Never move or reuse an existing release tag.
+
+### Release Preparation
+
+Before deploying a release:
+
+1. Confirm every included issue has been human-verified, closed, and moved to `Done`.
+2. Select the next version.
+3. Change the `CHANGELOG.md` `Unreleased` section into:
+
+   ```md
+   ## [vX.Y.Z] - YYYY-MM-DD
+   ```
+
+4. Add a new empty `## Unreleased` section above the released version.
+5. Rename:
+
+   ```text
+   docs/patch-notes/UNRELEASED.md
+   ```
+
+   to:
+
+   ```text
+   docs/patch-notes/vX.Y.Z.md
+   ```
+
+6. Create a fresh `docs/patch-notes/UNRELEASED.md` for the next release.
+7. Commit the release preparation to `main`.
+8. Run `npm run build`.
+9. Push the release commit to `main`.
+10. Run the **Deploy Evermarch to Play Site** workflow.
+11. Record the exact Evermarch commit SHA sent in the repository dispatch.
+
+### Publishing the Release
+
+- Do not publish a GitHub Release until the deployment has succeeded.
+- Confirm the deployed Evermarch SHA matches:
+  - the dispatch payload
+  - the intended release commit
+  - the Evermarch entry in the play-site `external-games.lock.json`
+- Create an annotated Git tag pointing to that exact deployed commit.
+- Push the tag without moving or recreating it.
+- Create the GitHub Release from that existing tag.
+- Use `docs/patch-notes/vX.Y.Z.md` as the GitHub Release body.
+- Use the release title `Evermarch vX.Y.Z`.
+- If deployment fails, do not create the tag or publish the GitHub Release.
+
+Example release commands:
+
+```bash
+git tag -a "vX.Y.Z" "<deployed-commit-sha>" -m "Evermarch vX.Y.Z"
+git push origin "vX.Y.Z"
+
+gh release create "vX.Y.Z" \
+  --verify-tag \
+  --title "Evermarch vX.Y.Z" \
+  --notes-file "docs/patch-notes/vX.Y.Z.md"
+```
 
 ## Design Direction
 

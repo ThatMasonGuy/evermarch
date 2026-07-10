@@ -170,7 +170,7 @@
             <button
               type="button"
               class="inv-quick-btn"
-              :disabled="!hasSellableItem || (selectedItem?.count ?? 0) <= 1"
+              :disabled="!hasSellableItem"
               @click="sellAllButOne"
             >
               All But 1
@@ -380,7 +380,7 @@ const sortMode = ref<SortMode>('name')
 const selectedItemId = ref<string | null>(null)
 const activeDetailTab = ref<DetailTab>('info')
 const sellAmount = ref(0)
-const preserveOneWhenSelling = ref(false)
+const allButOnePending = ref(false)
 
 const iconMap: Record<string, Component> = {
   BookOpen,
@@ -485,10 +485,7 @@ const activeCategoryLabel = computed(() => {
 
 const totalInventoryValue = computed(() => store.inventoryValue)
 const filteredValue = computed(() => filteredItems.value.reduce((sum, item) => sum + item.stackValue, 0))
-const maxSellAmount = computed(() => {
-  const count = selectedItem.value?.count ?? 0
-  return preserveOneWhenSelling.value ? Math.max(0, count - 1) : count
-})
+const maxSellAmount = computed(() => selectedItem.value?.count ?? 0)
 const normalizedSellAmount = computed(() => clampSellAmount(sellAmount.value))
 const projectedSellValue = computed(() => (selectedItem.value?.sellValue ?? 0) * normalizedSellAmount.value)
 const hasSellableItem = computed(() => !!selectedItem.value && selectedItem.value.sellValue > 0 && selectedItem.value.count > 0)
@@ -498,28 +495,31 @@ watch(filteredItems, (items) => {
   if (items.length === 0) {
     selectedItemId.value = null
     sellAmount.value = 0
-    preserveOneWhenSelling.value = false
+    allButOnePending.value = false
     return
   }
 
   if (!selectedItemId.value || !items.some((item) => item.id === selectedItemId.value)) {
-    preserveOneWhenSelling.value = false
+    allButOnePending.value = false
     selectedItemId.value = items[0]?.id ?? null
   }
 }, { immediate: true })
 
-watch([selectedItem, preserveOneWhenSelling], ([item]) => {
+watch(selectedItemId, (itemId) => {
+  const item = itemId
+    ? ownedItems.value.find((candidate) => candidate.id === itemId) ?? null
+    : null
+
   if (!item) {
     sellAmount.value = 0
     return
   }
 
-  const maximum = maxSellAmount.value
-  sellAmount.value = maximum > 0 ? Math.min(Math.max(1, normalizedSellAmount.value || 1), maximum) : 0
+  sellAmount.value = item.count > 0 ? 1 : 0
 }, { immediate: true })
 
 function selectItem(id: string) {
-  preserveOneWhenSelling.value = false
+  allButOnePending.value = false
   selectedItemId.value = id
 }
 
@@ -553,6 +553,7 @@ function compareInventoryItems(a: InventoryItem, b: InventoryItem): number {
 
 function setSellAmountFromEvent(event: Event) {
   const target = event.target as HTMLInputElement
+  allButOnePending.value = false
   setSellAmount(Number(target.value))
 }
 
@@ -561,13 +562,13 @@ function setSellAmount(amount: number) {
 }
 
 function sellAll() {
-  preserveOneWhenSelling.value = false
+  allButOnePending.value = false
   setSellAmount(selectedItem.value?.count ?? 0)
 }
 
 function sellAllButOne() {
-  preserveOneWhenSelling.value = true
-  setSellAmount(maxSellAmount.value)
+  allButOnePending.value = true
+  setSellAmount(Math.max(0, (selectedItem.value?.count ?? 0) - 1))
 }
 
 function clampSellAmount(amount: number): number {
@@ -580,11 +581,13 @@ function sellSelected() {
   const amount = normalizedSellAmount.value
   if (!item || item.sellValue <= 0 || amount <= 0) return
 
+  const recalculateAllButOne = allButOnePending.value
+  allButOnePending.value = false
   const goldGained = store.sellItem(item.id, amount)
   if (goldGained <= 0) return
 
   const remaining = store.getItemCount(item.id)
-  sellAmount.value = preserveOneWhenSelling.value
+  sellAmount.value = recalculateAllButOne
     ? Math.max(0, remaining - 1)
     : Math.min(amount, remaining)
 }

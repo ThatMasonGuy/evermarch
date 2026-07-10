@@ -16,7 +16,7 @@
           <span>Total Value</span>
           <strong>{{ formatGold(totalInventoryValue) }}</strong>
         </div>
-        <div class="inv-summary-stat">
+        <div v-if="activeCategory !== 'all'" class="inv-summary-stat">
           <Filter :size="14" />
           <span>Filtered Value</span>
           <strong>{{ formatGold(filteredValue) }}</strong>

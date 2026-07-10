@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [v0.1.0] - 2026-07-10
+
 ### Fixed
 
 - Hide the Inventory “Filtered Value” summary and reflow the All view’s remaining totals (#1).

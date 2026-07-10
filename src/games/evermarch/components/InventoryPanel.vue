@@ -5,7 +5,10 @@
         <h2 class="inv-title">Inventory</h2>
         <span class="inv-sub">{{ ownedItems.length }} stacks held</span>
       </div>
-      <div class="inv-summary">
+      <div
+        class="inv-summary"
+        :class="{ 'inv-summary-with-filter': activeCategory !== 'all' }"
+      >
         <div class="inv-summary-stat">
           <Coins :size="14" />
           <span>Gold</span>
@@ -740,8 +743,12 @@ function formatTimestamp(value: number | null): string {
 
 .inv-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(112px, 1fr));
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
   gap: 8px;
+}
+
+.inv-summary-with-filter {
+  grid-template-columns: repeat(3, minmax(112px, 1fr));
 }
 
 .inv-summary-stat {

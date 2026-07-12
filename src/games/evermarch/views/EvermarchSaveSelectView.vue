@@ -11,20 +11,8 @@
           <Compass :size="18" />
           <span>Evermarch</span>
         </div>
-        <div class="save-nav-actions">
-          <button
-            type="button"
-            class="save-nav-refresh"
-            :disabled="refreshingSaves"
-            :title="refreshingSaves ? 'Refreshing saved progress' : 'Refresh saved progress'"
-            @click="refreshSaves"
-          >
-            <RefreshCw :size="15" :class="{ 'save-nav-refreshing': refreshingSaves }" />
-            <span>{{ refreshingSaves ? 'Refreshing' : 'Refresh' }}</span>
-          </button>
-          <div class="save-nav-user">
-            <span class="save-nav-username">{{ authStore.displayName }}</span>
-          </div>
+        <div class="save-nav-user">
+          <span class="save-nav-username">{{ authStore.displayName }}</span>
         </div>
       </div>
     </nav>
@@ -34,6 +22,18 @@
       <div class="save-header animate-fade-in-up">
         <h1 class="save-title">Choose Your Path</h1>
         <p class="save-subtitle">Continue your local adventure or start a new one</p>
+      </div>
+
+      <div class="save-refresh-row animate-fade-in-up">
+        <button
+          type="button"
+          class="save-refresh-btn"
+          :disabled="refreshingSaves"
+          @click="refreshSaves"
+        >
+          <RefreshCw :size="16" :class="{ 'save-refreshing': refreshingSaves }" />
+          <span>{{ refreshingSaves ? 'Refreshing saves...' : 'Refresh saved progress' }}</span>
+        </button>
       </div>
 
       <div class="save-grid">
@@ -508,36 +508,35 @@ function enterGame() {
   font-weight: 700;
   color: var(--color-accent-light);
 }
-.save-nav-actions {
+.save-refresh-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
+  justify-content: center;
+  margin-top: -16px;
 }
-.save-nav-refresh {
+.save-refresh-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 30px;
-  padding: 5px 8px;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
   background: rgba(0, 0, 0, 0.12);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
-.save-nav-refresh:hover:not(:disabled) { color: var(--color-accent-light); border-color: var(--color-border-hover); }
-.save-nav-refresh:disabled { opacity: 0.62; cursor: wait; }
-.save-nav-refreshing { animation: save-nav-refresh-spin 0.8s linear infinite; }
+.save-refresh-btn:hover:not(:disabled) { color: var(--color-accent-light); border-color: var(--color-border-hover); }
+.save-refresh-btn:disabled { opacity: 0.62; cursor: wait; }
+.save-refreshing { animation: save-refresh-spin 0.8s linear infinite; }
 .save-nav-username {
   font-size: 12px;
   color: var(--color-text-secondary);
 }
 
-@keyframes save-nav-refresh-spin { to { transform: rotate(360deg); } }
+@keyframes save-refresh-spin { to { transform: rotate(360deg); } }
 
 /* Content */
 .save-content {
@@ -919,8 +918,6 @@ function enterGame() {
   }
   .save-nav-back span { display: none; }
   .save-nav-title { min-width: 0; }
-  .save-nav-refresh span { display: none; }
-  .save-nav-refresh { width: 28px; padding: 0; justify-content: center; }
   .save-nav-user {
     min-width: 0;
     max-width: min(42vw, 180px);

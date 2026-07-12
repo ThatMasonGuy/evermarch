@@ -19,6 +19,10 @@
 - Add a blocking loading state while a selected character opens (#19).
 - Expand the mobile mine face, compress its depth rail, and remove the redundant mining-mode card (#10).
 
+### Changed
+
+- Move the character-selection refresh action from the header to immediately before the save cards (#17).
+
 ## [v0.2.0] - 2026-07-12
 
 ### Added

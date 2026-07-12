@@ -8,6 +8,7 @@
 - Tapping or holding anywhere within the mine face, including between blocks, no longer triggers browser zoom or selection gestures (#8).
 - Active mining XP now has a consistent, controlled pace—about 2.5 times routine mining instead of rewarding rapid taps without a limit (#16).
 - The character-selection page now has a refresh control for checking the latest local and cloud progress (#17).
+- The refresh action now appears directly above your character saves instead of in the header (#17).
 - Continuing a device save now warns before it can replace cloud progress; the warning is prominent when the cloud save is further ahead (#18).
 - Selecting a character now shows a blocking loading message, so slow mobile opens have clear feedback and cannot accept extra taps (#19).
 - Mobile mining now gives the block face the available width, keeps the depth rail slim, and removes the redundant Mining mode card (#10).

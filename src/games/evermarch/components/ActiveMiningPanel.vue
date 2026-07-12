@@ -92,8 +92,16 @@
               <span
                 v-if="!block.broken && blockProgress(block) > 0"
                 class="active-mine-cracks"
+                :class="crackStageClass(block)"
                 :style="{ opacity: crackOpacity(block) }"
-              ></span>
+              >
+                <svg viewBox="0 0 100 100" aria-hidden="true">
+                  <path class="active-mine-crack-path active-mine-crack-path-one" d="M50 50H26V33H12M50 50V24H67V10" />
+                  <path class="active-mine-crack-path active-mine-crack-path-two" d="M50 50H76V66H90M50 50V75H62V91" />
+                  <path class="active-mine-crack-path active-mine-crack-path-three" d="M50 50H35V62H19V79" />
+                  <path class="active-mine-crack-path active-mine-crack-path-four" d="M50 50H65V40H82V26" />
+                </svg>
+              </span>
               <span
                 v-if="!block.broken && blockProgress(block) > 0"
                 class="active-mine-durability"
@@ -102,6 +110,9 @@
                 <span :style="{ width: durabilityWidth(block) }"></span>
               </span>
               <span v-if="block.broken && block.containsChest" class="active-mine-chest-found">CHEST</span>
+              <span v-if="block.broken" class="active-mine-rubble" aria-hidden="true">
+                <i v-for="index in 6" :key="index"></i>
+              </span>
             </button>
           </div>
         </div>
@@ -321,6 +332,10 @@ function durabilityWidth(block: ActiveMiningBlockState): string {
 
 function crackOpacity(block: ActiveMiningBlockState): string {
   return String(Math.max(0.22, Math.min(0.88, blockProgress(block) + 0.14)))
+}
+
+function crackStageClass(block: ActiveMiningBlockState): string {
+  return `active-mine-cracks-stage-${Math.min(4, Math.max(1, Math.ceil(blockProgress(block) * 4)))}`
 }
 
 function blockSprite(block: ActiveMiningBlockState): string | null {
@@ -805,11 +820,75 @@ function depthTickTop(tick: number): string {
 .active-mine-cracks {
   position: absolute;
   inset: 8%;
-  background:
-    linear-gradient(32deg, transparent 42%, rgba(14, 15, 14, 0.84) 43% 47%, transparent 48%),
-    linear-gradient(112deg, transparent 28%, rgba(14, 15, 14, 0.72) 29% 32%, transparent 33%),
-    linear-gradient(154deg, transparent 58%, rgba(14, 15, 14, 0.82) 59% 62%, transparent 63%);
   pointer-events: none;
+}
+
+.active-mine-cracks svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.active-mine-crack-path {
+  fill: none;
+  stroke: rgba(13, 15, 13, 0.9);
+  stroke-width: 4;
+  vector-effect: non-scaling-stroke;
+  shape-rendering: crispEdges;
+  stroke-linejoin: miter;
+  filter: drop-shadow(1px 1px 0 rgba(255, 255, 255, 0.16));
+  transform-origin: 50% 50%;
+  animation: active-mine-crack-in 130ms ease-out both;
+}
+
+.active-mine-crack-path-two,
+.active-mine-crack-path-three,
+.active-mine-crack-path-four {
+  display: none;
+}
+
+.active-mine-cracks-stage-2 .active-mine-crack-path-two,
+.active-mine-cracks-stage-3 .active-mine-crack-path-two,
+.active-mine-cracks-stage-4 .active-mine-crack-path-two,
+.active-mine-cracks-stage-3 .active-mine-crack-path-three,
+.active-mine-cracks-stage-4 .active-mine-crack-path-three,
+.active-mine-cracks-stage-4 .active-mine-crack-path-four {
+  display: block;
+}
+
+.active-mine-rubble {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.active-mine-rubble i {
+  position: absolute;
+  width: 18%;
+  height: 18%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--active-mine-block-tint), #2a2e29 65%);
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.3);
+  animation: active-mine-rubble-pop 260ms ease-out both;
+}
+
+.active-mine-rubble i:nth-child(1) { left: 12%; bottom: 18%; transform: rotate(12deg); }
+.active-mine-rubble i:nth-child(2) { left: 36%; bottom: 10%; transform: rotate(-18deg); animation-delay: 30ms; }
+.active-mine-rubble i:nth-child(3) { right: 16%; bottom: 22%; transform: rotate(18deg); animation-delay: 50ms; }
+.active-mine-rubble i:nth-child(4) { left: 22%; top: 18%; transform: rotate(-10deg); animation-delay: 20ms; }
+.active-mine-rubble i:nth-child(5) { right: 24%; top: 25%; transform: rotate(14deg); animation-delay: 70ms; }
+.active-mine-rubble i:nth-child(6) { left: 48%; top: 42%; transform: rotate(22deg); animation-delay: 40ms; }
+
+@keyframes active-mine-crack-in {
+  from { opacity: 0; transform: scale(0.55); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes active-mine-rubble-pop {
+  from { opacity: 0; translate: 0 -14px; }
+  to { opacity: 1; translate: 0 0; }
 }
 
 .active-mine-durability {

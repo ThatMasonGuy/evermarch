@@ -5,6 +5,7 @@
 ### Fixed
 
 - Continue held mining when dragging across the gaps between blocks in the active mine face (#9).
+- Make active-mining break feedback visibly spread from block centres and leave block rubble behind (#12).
 
 ## [v0.2.0] - 2026-07-12
 

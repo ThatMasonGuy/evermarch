@@ -88,15 +88,10 @@
               <span
                 v-if="!block.broken && blockProgress(block) > 0"
                 class="active-mine-cracks"
-                :class="crackStageClass(block)"
+                :class="[crackStageClass(block), crackVariantClass(block)]"
                 :style="{ opacity: crackOpacity(block) }"
               >
-                <svg viewBox="0 0 100 100" aria-hidden="true">
-                  <path class="active-mine-crack-path active-mine-crack-path-one" d="M50 50H26V33H12M50 50V24H67V10" />
-                  <path class="active-mine-crack-path active-mine-crack-path-two" d="M50 50H76V66H90M50 50V75H62V91" />
-                  <path class="active-mine-crack-path active-mine-crack-path-three" d="M50 50H35V62H19V79" />
-                  <path class="active-mine-crack-path active-mine-crack-path-four" d="M50 50H65V40H82V26" />
-                </svg>
+                <i v-for="index in 9" :key="index" class="active-mine-damage-chip"></i>
               </span>
               <span
                 v-if="!block.broken && blockProgress(block) > 0"
@@ -347,7 +342,11 @@ function crackOpacity(block: ActiveMiningBlockState): string {
 }
 
 function crackStageClass(block: ActiveMiningBlockState): string {
-  return `active-mine-cracks-stage-${Math.min(4, Math.max(1, Math.ceil(blockProgress(block) * 4)))}`
+  return `active-mine-cracks-stage-${Math.min(3, Math.max(1, Math.ceil(blockProgress(block) * 3)))}`
+}
+
+function crackVariantClass(block: ActiveMiningBlockState): string {
+  return `active-mine-cracks-variant-${block.variant % 3}`
 }
 
 function blockSprite(block: ActiveMiningBlockState): string | null {
@@ -834,42 +833,57 @@ function depthTickTop(tick: number): string {
 
 .active-mine-cracks {
   position: absolute;
-  inset: 8%;
+  inset: 17%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   pointer-events: none;
 }
 
-.active-mine-cracks svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+.active-mine-damage-chip {
+  width: 66%;
+  height: 66%;
+  place-self: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(18, 22, 20, 0.82);
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.34), 1px 2px 0 rgba(255, 255, 255, 0.1);
+  animation: active-mine-damage-chip-in 120ms ease-out both;
 }
 
-.active-mine-crack-path {
-  fill: none;
-  stroke: rgba(13, 15, 13, 0.9);
-  stroke-width: 4;
-  vector-effect: non-scaling-stroke;
-  shape-rendering: crispEdges;
-  stroke-linejoin: miter;
-  filter: drop-shadow(1px 1px 0 rgba(255, 255, 255, 0.16));
-  transform-origin: 50% 50%;
-  animation: active-mine-crack-in 130ms ease-out both;
-}
-
-.active-mine-crack-path-two,
-.active-mine-crack-path-three,
-.active-mine-crack-path-four {
+.active-mine-cracks-stage-1 .active-mine-damage-chip:nth-child(n + 4),
+.active-mine-cracks-stage-2 .active-mine-damage-chip:nth-child(n + 7) {
   display: none;
 }
 
-.active-mine-cracks-stage-2 .active-mine-crack-path-two,
-.active-mine-cracks-stage-3 .active-mine-crack-path-two,
-.active-mine-cracks-stage-4 .active-mine-crack-path-two,
-.active-mine-cracks-stage-3 .active-mine-crack-path-three,
-.active-mine-cracks-stage-4 .active-mine-crack-path-three,
-.active-mine-cracks-stage-4 .active-mine-crack-path-four {
-  display: block;
-}
+.active-mine-cracks-variant-0 .active-mine-damage-chip:nth-child(1) { grid-area: 2 / 2; }
+.active-mine-cracks-variant-0 .active-mine-damage-chip:nth-child(2) { grid-area: 2 / 3; }
+.active-mine-cracks-variant-0 .active-mine-damage-chip:nth-child(3) { grid-area: 3 / 2; }
+.active-mine-cracks-variant-0 .active-mine-damage-chip:nth-child(4) { grid-area: 1 / 2; }
+.active-mine-cracks-variant-0 .active-mine-damage-chip:nth-child(5) { grid-area: 2 / 1; }
+.active-mine-cracks-variant-0 .active-mine-damage-chip:nth-child(6) { grid-area: 3 / 3; }
+.active-mine-cracks-variant-0 .active-mine-damage-chip:nth-child(7) { grid-area: 1 / 1; }
+.active-mine-cracks-variant-0 .active-mine-damage-chip:nth-child(8) { grid-area: 1 / 3; }
+.active-mine-cracks-variant-0 .active-mine-damage-chip:nth-child(9) { grid-area: 3 / 1; }
+
+.active-mine-cracks-variant-1 .active-mine-damage-chip:nth-child(1) { grid-area: 2 / 1; }
+.active-mine-cracks-variant-1 .active-mine-damage-chip:nth-child(2) { grid-area: 2 / 2; }
+.active-mine-cracks-variant-1 .active-mine-damage-chip:nth-child(3) { grid-area: 2 / 3; }
+.active-mine-cracks-variant-1 .active-mine-damage-chip:nth-child(4) { grid-area: 1 / 2; }
+.active-mine-cracks-variant-1 .active-mine-damage-chip:nth-child(5) { grid-area: 3 / 2; }
+.active-mine-cracks-variant-1 .active-mine-damage-chip:nth-child(6) { grid-area: 1 / 1; }
+.active-mine-cracks-variant-1 .active-mine-damage-chip:nth-child(7) { grid-area: 1 / 3; }
+.active-mine-cracks-variant-1 .active-mine-damage-chip:nth-child(8) { grid-area: 3 / 1; }
+.active-mine-cracks-variant-1 .active-mine-damage-chip:nth-child(9) { grid-area: 3 / 3; }
+
+.active-mine-cracks-variant-2 .active-mine-damage-chip:nth-child(1) { grid-area: 1 / 2; }
+.active-mine-cracks-variant-2 .active-mine-damage-chip:nth-child(2) { grid-area: 2 / 2; }
+.active-mine-cracks-variant-2 .active-mine-damage-chip:nth-child(3) { grid-area: 3 / 2; }
+.active-mine-cracks-variant-2 .active-mine-damage-chip:nth-child(4) { grid-area: 2 / 1; }
+.active-mine-cracks-variant-2 .active-mine-damage-chip:nth-child(5) { grid-area: 2 / 3; }
+.active-mine-cracks-variant-2 .active-mine-damage-chip:nth-child(6) { grid-area: 1 / 1; }
+.active-mine-cracks-variant-2 .active-mine-damage-chip:nth-child(7) { grid-area: 1 / 3; }
+.active-mine-cracks-variant-2 .active-mine-damage-chip:nth-child(8) { grid-area: 3 / 1; }
+.active-mine-cracks-variant-2 .active-mine-damage-chip:nth-child(9) { grid-area: 3 / 3; }
 
 .active-mine-rubble {
   position: absolute;
@@ -896,7 +910,7 @@ function depthTickTop(tick: number): string {
 .active-mine-rubble i:nth-child(5) { right: 24%; top: 25%; transform: rotate(14deg); animation-delay: 70ms; }
 .active-mine-rubble i:nth-child(6) { left: 48%; top: 42%; transform: rotate(22deg); animation-delay: 40ms; }
 
-@keyframes active-mine-crack-in {
+@keyframes active-mine-damage-chip-in {
   from { opacity: 0; transform: scale(0.55); }
   to { opacity: 1; transform: scale(1); }
 }

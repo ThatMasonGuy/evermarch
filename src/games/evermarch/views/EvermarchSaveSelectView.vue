@@ -224,6 +224,18 @@
       @accept="restoreMessage = ''"
       @cancel="restoreMessage = ''"
     />
+
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="openingSave" class="save-opening-backdrop" data-theme="evermarch" role="status" aria-live="assertive">
+          <div class="save-opening-panel">
+            <span class="save-opening-spinner" aria-hidden="true"></span>
+            <strong>Opening your adventure...</strong>
+            <span>Loading your saved progress</span>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -275,6 +287,7 @@ const cloudComparisonLabel = computed(() => {
 const cloudMessage = ref('')
 const cloudMessageType = ref<'success' | 'error'>('success')
 const restoreBusy = ref(false)
+const openingSave = ref(false)
 const showRestoreConfirm = ref(false)
 const showLocalOverwriteConfirm = ref(false)
 const restoreMessage = ref('')
@@ -437,8 +450,11 @@ function handleCreateSave() {
 }
 
 function enterGame() {
+  openingSave.value = true
   markPlaySessionIntent()
-  router.push('/play')
+  void router.push('/play').catch(() => {
+    openingSave.value = false
+  })
 }
 </script>
 
@@ -784,6 +800,42 @@ function enterGame() {
   justify-content: center;
   padding: 24px;
 }
+.save-opening-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(5px);
+}
+.save-opening-panel {
+  width: min(100%, 320px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 28px 24px;
+  border: 2px solid rgba(246, 211, 107, 0.48);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  background: var(--color-bg-surface);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+  text-align: center;
+}
+.save-opening-panel strong { font-size: 16px; }
+.save-opening-panel span:last-child { color: var(--color-text-secondary); font-size: 12px; }
+.save-opening-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(246, 211, 107, 0.22);
+  border-top-color: var(--em-gold);
+  border-radius: 50%;
+  animation: save-opening-spin 0.72s linear infinite;
+}
+
+@keyframes save-opening-spin { to { transform: rotate(360deg); } }
 .modal-panel {
   background: var(--color-bg-surface);
   border: 2px solid var(--em-block-border);

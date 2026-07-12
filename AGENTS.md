@@ -57,6 +57,19 @@ Evermarch is the authenticated idle RPG app mounted at `/evermarch/app/` on `pla
 - Use GitHub CLI or the GitHub API to read issues, comments, labels, milestones, pull requests, and Project status.
 - If GitHub authentication or Project permissions are unavailable, do not silently skip bookkeeping. Report the missing operation clearly.
 
+### Project Card Stewardship
+
+Unless the user explicitly asks to skip or defer board administration, manage Project cards as the first stage of every Ready-queue review, before implementation begins:
+
+1. Read every Ready issue card and its latest issue context.
+2. Ensure its issue labels reflect the work area, select a Project Priority (`P0`, `P1`, or `P2`) and Size (`XS` through `XL`), and leave `Estimate` unset.
+3. Assign the issue to `ThatMasonGuy` and set its Project `Start date` to the issue creation date in Australia/Brisbane time. GitHub Project date fields are day-granular; the linked issue remains the source of truth for the exact timestamp.
+4. Add only evidence-backed relationships to other Project items. Prefer a GitHub blocking/dependency relationship for a prerequisite; use a parent/sub-issue relationship only when the work is genuinely a child deliverable. Do not invent relationships merely to make the board look connected.
+5. If an item is returned from `Needs verification` to `Ready`, clear its Project `Target date` before beginning the renewed implementation pass. A target date represents the current verification handoff, not a prior attempt.
+6. When moving an implemented item to `Needs verification`, set its Project `Target date` to that handoff date in Australia/Brisbane time. The issue comment timestamp records the exact handoff time.
+
+For historical backfill, use the issue creation date for `Start date`. Use the date of the first documented validated handoff/commit comment for `Target date`; only if no such evidence exists, use the issue closure date and record that it is an inferred timeline value. Continue to leave `Estimate` blank.
+
 When working from the issue queue:
 
 1. Select one open issue from the `Ready` status.

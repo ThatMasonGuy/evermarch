@@ -716,6 +716,9 @@ function depthTickTop(tick: number): string {
   height: 100%;
   display: grid;
   gap: 8px;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .active-mine-block {

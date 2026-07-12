@@ -1,16 +1,1 @@
 # Unreleased patch notes
-
-- You can now drag a held mining action cleanly from one block to another, including across the small gaps in the mine face (#9).
-- A held mining action now follows your pointer onto another block after the first one breaks, on both touch and desktop input (#9).
-- Mining damage now shows clear, centre-out block cracks, and broken blocks leave visible rubble (#12).
-- Mining blocks now use three distinct, square damage patterns that progress cleanly as tougher blocks are mined (#12).
-- The character-selection header now stays on one tidy mobile row, with a compact back arrow (#5).
-- Tapping or holding anywhere within the mine face, including between blocks, no longer triggers browser zoom or selection gestures (#8).
-- Active mining XP now has a consistent, controlled pace—about 2.5 times routine mining instead of rewarding rapid taps without a limit (#16).
-- The character-selection page now has a refresh control for checking the latest local and cloud progress (#17).
-- The refresh action now appears directly above your character saves instead of in the header (#17).
-- Continuing a device save now warns before it can replace cloud progress; the warning is prominent when the cloud save is further ahead (#18).
-- Selecting a character now shows a blocking loading message, so slow mobile opens have clear feedback and cannot accept extra taps (#19).
-- Mobile mining now gives the block face the available width, keeps the depth rail slim, and removes the redundant Mining mode card (#10).
-- The mobile depth rail now matches the mine face height, keeps its labels, and places the current-depth marker directly on the rail (#10).
-- The Continue action in the Welcome Back summary now stays clearly readable over scrollable progress details (#20).

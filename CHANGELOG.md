@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [v0.3.0] - 2026-07-12
+
 ### Fixed
 
 - Continue held mining when dragging across the gaps between blocks in the active mine face (#9).
@@ -24,6 +26,12 @@
 ### Changed
 
 - Move the character-selection refresh action from the header to immediately before the save cards (#17).
+
+### Unconfirmed / untested pending live verification
+
+- #8 — Verify on the affected iPhone that taps on broken blocks and grid gaps do not trigger browser zoom or recentering.
+- #18 — Verify on a live cloud account that continuing a local save warns before cloud overwrite and escalates when cloud progress is ahead.
+- #19 — Verify on a slow mobile device with cloud state that the blocking save-opening feedback remains visible until the character loads.
 
 ## [v0.2.0] - 2026-07-12
 

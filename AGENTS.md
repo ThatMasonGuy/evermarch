@@ -158,8 +158,16 @@ If validation fails or the issue is blocked:
 
 - Use GitHub milestones to associate issues and pull requests with their intended release.
 - Assign an issue to its target release milestone when that release is known.
-- Only human-verified, closed issues in the `Done` Project status may be included in a live release.
+- Only human-verified, closed issues in the `Done` Project status may be included in a live release, except for the live-verification exception below.
 - Close the release milestone after the corresponding GitHub Release has been published.
+
+### Live-Verification Release Exception
+
+- An open issue in `Needs verification` may be included in a release only when its latest issue comment explicitly says that testing is blocked until the change is live (for example, it requires a real cloud account, a physical device, or the production deployment).
+- The agent must read and verify that latest comment immediately before release preparation; an assumption that a feature is hard to test locally is not enough.
+- Keep such issues open and in `Needs verification`; the agent must not close them, move them to `Done`, or claim that they have been verified.
+- In the versioned `CHANGELOG.md` entry, list every exception under an `Unconfirmed / untested pending live verification` heading with its issue number and the specific live test still required. Do not present those changes as confirmed in player-facing copy.
+- After deployment, tag, and GitHub Release publication, leave a comment on each exception issue with the deployed version, commit SHA, and live URL so the human verifier can test it in production.
 
 ### Versioning
 
@@ -177,7 +185,7 @@ If validation fails or the issue is blocked:
 
 Before deploying a release:
 
-1. Confirm every included issue has been human-verified, closed, and moved to `Done`.
+1. Confirm every included issue has been human-verified, closed, and moved to `Done`, unless it qualifies for the documented Live-Verification Release Exception above.
 2. Select the next version.
 3. Change the `CHANGELOG.md` `Unreleased` section into:
 

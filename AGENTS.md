@@ -132,6 +132,19 @@ The agent must not:
 - claim human verification has occurred
 - merge its own pull request without explicit approval
 
+### Ready-Queue Execution Evidence (Mandatory)
+
+For every issue taken from the `Ready` Project status, follow this exact sequence. A previous failed attempt, an older issue comment, or code already present in the working tree is not completion evidence.
+
+1. Read the complete issue body and every existing comment before changing code.
+2. If the issue contains an image or screenshot, retrieve and visually inspect every supplied image before deciding on the implementation. Address the visible problem, not only the written summary.
+3. Move that issue to `In progress` before editing. Work one Ready issue at a time unless the user explicitly asks for a combined change.
+4. Implement only that issue's scope, update `CHANGELOG.md` and player-facing `docs/patch-notes/UNRELEASED.md` when applicable, and run the relevant validation (including `npm run build` for meaningful app changes).
+5. Commit the validated direct-to-main change with the issue number in the subject, push it, then add an issue comment that explicitly includes: root cause or explanation, what changed, validation performed, and the pushed commit SHA.
+6. Only after the commit and complete issue comment exist, move the item to `Needs verification`. Never move it directly from `Ready` to `Needs verification`, and never mark it `Done` or close it.
+
+Before reporting a Ready-queue pass, re-read the Project board and confirm that every processed issue is in `Needs verification`, each issue comment contains its commit SHA, and no Ready item was silently skipped or combined with an unrelated issue.
+
 A human reviews work in `Needs verification`. Once accepted, the human closes the issue. The Project may then automatically move the closed issue to `Done`.
 
 If validation fails or the issue is blocked:

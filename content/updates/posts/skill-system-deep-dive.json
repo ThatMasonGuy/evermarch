@@ -1,0 +1,15 @@
+{
+  "slug": "skill-system-deep-dive",
+  "title": "Skill System Deep Dive: Three Lanes of Progress",
+  "excerpt": "A look at how background, idle, and active skill lanes work together to keep your world ticking around the clock.",
+  "publishedAt": "2026-03-01",
+  "category": "Devlog",
+  "keywords": ["Evermarch skills", "three lane progression", "idle RPG design", "offline progress game"],
+  "body": [
+    { "type": "paragraph", "text": "Evermarch is built around three concurrent ways to make progress: background work that continues while you are away, an idle lane for ongoing training, and an active lane for hands-on play." },
+    { "type": "heading", "text": "Active play is additive" },
+    { "type": "paragraph", "text": "The key rule is simple: actively playing should add to what your world is already doing. Choosing a hands-on activity should never erase the progress from your background or idle lanes." },
+    { "type": "list", "items": ["Background progression supports long-term activities such as farming.", "Idle progression keeps one chosen skill moving while the game is open.", "Active progression rewards focused play with an additional hands-on activity."] }
+  ],
+  "screenshots": []
+}

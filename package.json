@@ -11,6 +11,7 @@
     "dev": "vite --host 127.0.0.1",
     "validate": "npm run validate:data",
     "validate:data": "node scripts/validate-evermarch-data.mjs",
+    "validate:updates": "node scripts/validate-update-posts.mjs",
     "build": "npm run validate:data && vue-tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1"
   },

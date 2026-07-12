@@ -1,0 +1,14 @@
+{
+  "slug": "cloud-save-architecture",
+  "title": "Cloud Save Architecture & Offline Progress",
+  "excerpt": "How we're building cloud saves with localStorage fallback and pure time-delta offline progress calculations.",
+  "publishedAt": "2026-02-20",
+  "category": "Tech",
+  "keywords": ["Evermarch cloud saves", "offline progress", "browser idle RPG saves", "Evermarch development"],
+  "body": [
+    { "type": "paragraph", "text": "Evermarch is designed so that a player's world can keep moving without requiring a permanent connection. Progress that happens while away is calculated from the elapsed time since the last save rather than from a separate always-running process." },
+    { "type": "paragraph", "text": "Cloud saves are paired with a local fallback so players can keep their progress available while the online service is unavailable or while they are playing without an account." },
+    { "type": "paragraph", "text": "Keeping these systems separate lets the game preserve the same core progression rules whether a save lives locally or is backed up to the cloud." }
+  ],
+  "screenshots": []
+}

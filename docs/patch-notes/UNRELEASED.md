@@ -1,3 +1,3 @@
 # Unreleased patch notes
 
-No released player-facing changes yet.
+- You can now drag a held mining action cleanly from one block to another, including across the small gaps in the mine face (#9).

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Continue held mining when dragging across the gaps between blocks in the active mine face (#9).
+
 ## [v0.2.0] - 2026-07-12
 
 ### Added

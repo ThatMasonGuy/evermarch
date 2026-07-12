@@ -58,7 +58,14 @@
         </div>
 
         <div class="active-mining-board-frame">
-          <div class="active-mining-board" :style="boardStyle" @pointerleave="endMining">
+          <div
+            class="active-mining-board"
+            :style="boardStyle"
+            @pointermove="continueMiningAtPointer"
+            @pointerleave="endMining"
+            @pointerup="endMining"
+            @pointercancel="endMining"
+          >
             <button
               v-for="block in mining.blocks"
               :key="block.id"
@@ -67,10 +74,9 @@
               :class="blockClass(block)"
               :style="blockStyle(block)"
               :disabled="block.broken"
+              :data-block-id="block.id"
               :aria-label="blockAriaLabel(block)"
               @pointerdown="beginMining(block.id, $event)"
-              @pointerup="endMining"
-              @pointercancel="endMining"
               @pointerenter="continueMining(block.id)"
             >
               <span class="active-mine-block-texture"></span>
@@ -274,6 +280,15 @@ function continueMining(blockId: string) {
   if (!heldBlockId.value || heldBlockId.value === blockId) return
   heldBlockId.value = blockId
   mineBlock(blockId)
+}
+
+function continueMiningAtPointer(event: PointerEvent) {
+  if (!heldBlockId.value) return
+  event.preventDefault()
+  const block = document
+    .elementFromPoint(event.clientX, event.clientY)
+    ?.closest<HTMLButtonElement>('.active-mine-block:not(:disabled)')
+  if (block?.dataset.blockId) continueMining(block.dataset.blockId)
 }
 
 function endMining() {

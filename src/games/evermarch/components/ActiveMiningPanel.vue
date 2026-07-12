@@ -57,14 +57,10 @@
           ></span>
         </div>
 
-        <div class="active-mining-board-frame">
+        <div ref="mineBoardFrame" class="active-mining-board-frame">
           <div
             class="active-mining-board"
             :style="boardStyle"
-            @pointermove="continueMiningAtPointer"
-            @pointerleave="endMining"
-            @pointerup="endMining"
-            @pointercancel="endMining"
           >
             <button
               v-for="block in mining.blocks"
@@ -188,7 +184,7 @@
 
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Gem, Pickaxe, Ruler, Trophy } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import type { TaskDefinition } from '../data/tasks'
@@ -209,8 +205,10 @@ const props = defineProps<{
 const store = useGameStore()
 let holdTimer: ReturnType<typeof setInterval> | null = null
 let blastTimer: ReturnType<typeof setTimeout> | null = null
+let activePointerId: number | null = null
 const heldBlockId = ref<string | null>(null)
 const blastActive = ref(false)
+const mineBoardFrame = ref<HTMLElement | null>(null)
 
 const mining = computed(() => store.activeMining)
 const pickaxeSprite = computed(() => spriteForSkill('mining'))
@@ -261,13 +259,23 @@ watch(() => store.activeMiningBlastNonce, () => {
 
 onBeforeUnmount(() => {
   endMining()
+  window.removeEventListener('pointermove', continueMiningAtPointer)
+  window.removeEventListener('pointerup', endMiningAtPointer)
+  window.removeEventListener('pointercancel', endMiningAtPointer)
   if (blastTimer) clearTimeout(blastTimer)
+})
+
+onMounted(() => {
+  window.addEventListener('pointermove', continueMiningAtPointer)
+  window.addEventListener('pointerup', endMiningAtPointer)
+  window.addEventListener('pointercancel', endMiningAtPointer)
 })
 
 function beginMining(blockId: string, event: PointerEvent) {
   event.preventDefault()
 
   endMining()
+  activePointerId = event.pointerId
   heldBlockId.value = blockId
   mineBlock(blockId)
 
@@ -287,12 +295,26 @@ function continueMining(blockId: string) {
 }
 
 function continueMiningAtPointer(event: PointerEvent) {
-  if (!heldBlockId.value) return
+  if (!heldBlockId.value || event.pointerId !== activePointerId) return
   event.preventDefault()
+  const boardBounds = mineBoardFrame.value?.getBoundingClientRect()
+  if (!boardBounds
+    || event.clientX < boardBounds.left
+    || event.clientX > boardBounds.right
+    || event.clientY < boardBounds.top
+    || event.clientY > boardBounds.bottom
+  ) {
+    endMining()
+    return
+  }
   const block = document
     .elementFromPoint(event.clientX, event.clientY)
     ?.closest<HTMLButtonElement>('.active-mine-block:not(:disabled)')
   if (block?.dataset.blockId) continueMining(block.dataset.blockId)
+}
+
+function endMiningAtPointer(event: PointerEvent) {
+  if (event.pointerId === activePointerId) endMining()
 }
 
 function endMining() {
@@ -301,14 +323,11 @@ function endMining() {
     holdTimer = null
   }
   heldBlockId.value = null
+  activePointerId = null
 }
 
 function mineBlock(blockId: string) {
   performActiveMiningBlock(blockId)
-  const stillMineable = mining.value.blocks.some((block) => block.id === blockId && !block.broken)
-  if (!stillMineable) {
-    endMining()
-  }
 }
 
 function useTnt() {

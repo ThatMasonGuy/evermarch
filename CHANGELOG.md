@@ -5,6 +5,7 @@
 ### Fixed
 
 - Continue held mining when dragging across the gaps between blocks in the active mine face (#9).
+- Keep a held mining action active while it moves to another block, even after the first block breaks (#9).
 - Make active-mining break feedback visibly spread from block centres and leave block rubble behind (#12).
 - Keep the save-selection header on one usable mobile row with an icon-only back link (#5).
 - Prevent browser touch gestures from activating through any part of the active mine face (#8).

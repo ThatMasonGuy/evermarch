@@ -27,6 +27,8 @@ export const ACTIVE_STOP_CLICK_INTERVAL_MS = 2000
 export const ACTIVE_TARGET_CLICK_INTERVAL_MS = Math.round(1000 / ACTIVE_PEAK_CLICKS_PER_SECOND)
 export const ACTIVE_MAX_CLICK_INTERVAL_MS = ACTIVE_STOP_CLICK_INTERVAL_MS
 export const MAX_ACTIVE_SPEED_MULTIPLIER = 3
+export const ACTIVE_MINING_TARGET_XP_MULTIPLIER = 2.5
+export const ACTIVE_MINING_STRIKE_INTERVAL_MS = 170
 
 const MIN_ACTIVE_CLICK_INTERVAL_MS = 50
 
@@ -36,6 +38,8 @@ let lastAutoSave = 0
 let lastActiveClickAt: number | null = null
 let lastActiveTaskId: string | null = null
 let activeSavedProgressMs = 0
+let lastActiveMiningStrikeAt = 0
+let activeMiningXpCarry = 0
 
 export type PassiveLaneType = Extract<LaneType, 'idle'>
 type ActionSource = 'active' | PassiveLaneType | 'offline'
@@ -327,6 +331,10 @@ export function performActiveMiningBlock(blockId: string) {
   const skillLevel = store.getSkillLevel(task.skillId)
   if (skillLevel < task.levelRequired) return
 
+  const now = Date.now()
+  if (now - lastActiveMiningStrikeAt < ACTIVE_MINING_STRIKE_INTERVAL_MS) return
+  lastActiveMiningStrikeAt = now
+
   store.ensureActiveMiningState(task.id)
 
   // Active mining is block-driven. Each pointer action applies one fixed
@@ -340,16 +348,15 @@ export function performActiveMiningBlock(blockId: string) {
   }
 
   const result = store.damageActiveMiningBlock(task.id, blockId, damageMs)
+  grantActiveMiningStrikeXp(task, store, result.damageAppliedMs)
 
   if (!result.brokenBlock) return
 
   grantActiveMiningBlockReward(
-    task,
     store,
     result.brokenBlock,
     result.layerCleared,
     result.nextDepthMeters,
-    0,
   )
 }
 
@@ -386,7 +393,7 @@ export function detonateActiveMiningTnt(): ActiveMiningBlastResult {
     if (!result.brokenBlock) continue
 
     blocksBroken++
-    grantActiveMiningBlockReward(task, store, result.brokenBlock, result.layerCleared, result.nextDepthMeters, 0)
+    grantActiveMiningBlockReward(store, result.brokenBlock, result.layerCleared, result.nextDepthMeters)
     if (result.brokenBlock.containsChest) chestsFound++
   }
 
@@ -397,26 +404,11 @@ export function detonateActiveMiningTnt(): ActiveMiningBlastResult {
 }
 
 function grantActiveMiningBlockReward(
-  task: TaskDefinition,
   store: ReturnType<typeof useGameStore>,
   block: ActiveMiningBlockState,
   layerCleared: boolean,
   nextDepthMeters: number,
-  activeSavedMs: number,
 ) {
-  const xp = Math.max(1, Math.round(task.xpPerAction * xpMultiplierForActiveMiningBlock(block)))
-
-  store.addXp(task.skillId, xp)
-  store.addTaskMasteryXp(task.id, xp)
-  store.recordTaskAction({
-    taskId: task.id,
-    skillId: task.skillId,
-    source: 'active',
-    laneType: 'active',
-    xp,
-    activeSavedMs,
-  })
-
   for (const drop of block.drops) {
     store.addItem(drop.resourceId, drop.amount)
   }
@@ -438,19 +430,29 @@ function grantActiveMiningBlockReward(
   }
 }
 
-function xpMultiplierForActiveMiningBlock(block: ActiveMiningBlockState): number {
-  switch (block.kind) {
-    case 'target_ore':
-      return 0.8
-    case 'off_ore':
-    case 'coal':
-      return 0.45
-    case 'gravel':
-      return 0.16
-    case 'stone':
-    default:
-      return 0.18
-  }
+function grantActiveMiningStrikeXp(
+  task: TaskDefinition,
+  store: ReturnType<typeof useGameStore>,
+  damageAppliedMs: number,
+) {
+  const rawXp = task.xpPerAction
+    * ACTIVE_MINING_TARGET_XP_MULTIPLIER
+    * (damageAppliedMs / task.baseInterval)
+  activeMiningXpCarry += rawXp
+  const xp = Math.floor(activeMiningXpCarry)
+  if (xp < 1) return
+
+  activeMiningXpCarry -= xp
+  store.addXp(task.skillId, xp)
+  store.addTaskMasteryXp(task.id, xp)
+  store.recordTaskAction({
+    taskId: task.id,
+    skillId: task.skillId,
+    source: 'active',
+    laneType: 'active',
+    xp,
+    activeSavedMs: 0,
+  })
 }
 
 function getActiveClickCadence(taskId: string, timestamp: number) {

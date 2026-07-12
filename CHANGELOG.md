@@ -8,6 +8,7 @@
 - Make active-mining break feedback visibly spread from block centres and leave block rubble behind (#12).
 - Keep the save-selection header on one usable mobile row with an icon-only back link (#5).
 - Prevent browser touch gestures from activating through any part of the active mine face (#8).
+- Cap active-mining strike cadence and balance its XP at 2.5 times routine pace (#16).
 
 ## [v0.2.0] - 2026-07-12
 

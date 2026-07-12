@@ -26,6 +26,13 @@ Evermarch is the authenticated idle RPG app mounted at `/evermarch/app/` on `pla
 - The play-site repo pins every external game in `external-games.lock.json`. An Evermarch dispatch updates only Evermarch's lock entry; Cluckback and future games must remain pinned to their existing deployed commits.
 - This repo requires the `PLAY_SITE_DISPATCH_TOKEN` Actions secret. Do not print, commit, or move that token into source files.
 
+## Non-Negotiable Release Completion Gate
+
+- A successful Play Site deployment is not the release. Every live deployment must also have a version bump, a dated `CHANGELOG.md` entry, player-facing patch notes, an annotated Git tag, and a GitHub Release on the exact commit that the deployment built.
+- For a Ready-bucket pass, update `CHANGELOG.md` and `docs/patch-notes/UNRELEASED.md` while implementing the issues. Do not defer the issue record until after deployment, and do not leave a completed issue absent from the release notes.
+- Before reporting the work complete, run this sequence: choose the next semantic version; update `package.json` and `package-lock.json`; move Unreleased changelog and patch notes into the versioned release files; create fresh Unreleased sections; build; commit; push `main`; run **Deploy Evermarch to Play Site**; verify the Evermarch dispatch SHA and play-site lock; create and push an annotated `vMAJOR.MINOR.PATCH` tag on that exact deployed commit; create the GitHub Release from the versioned patch notes; then verify the release, tag target, and live URL.
+- Never tag the pre-release feature commit by mistake, reuse or move an existing tag, or call a deployment complete while the deployed commit is still untagged and unreleased. If a deployment occurred before release preparation, deploy the final release commit again before tagging and creating the GitHub Release.
+
 ## Development Workflow
 
 - Keep game logic scoped under `src/games/evermarch`.

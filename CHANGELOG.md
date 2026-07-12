@@ -6,6 +6,7 @@
 
 - Continue held mining when dragging across the gaps between blocks in the active mine face (#9).
 - Make active-mining break feedback visibly spread from block centres and leave block rubble behind (#12).
+- Keep the save-selection header on one usable mobile row with an icon-only back link (#5).
 
 ## [v0.2.0] - 2026-07-12
 

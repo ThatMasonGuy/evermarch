@@ -765,22 +765,25 @@ function enterGame() {
 
 @media (max-width: 560px) {
   .save-nav-inner {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "title user"
-      "back back";
-    gap: 8px 12px;
-    padding: 10px 16px;
+    min-width: 0;
+    gap: 8px;
+    padding: 10px 12px;
   }
 
-  .save-nav-back { grid-area: back; justify-self: start; }
-  .save-nav-title { grid-area: title; }
+  .save-nav-back {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+  .save-nav-back span { display: none; }
+  .save-nav-title { min-width: 0; }
   .save-nav-user {
-    grid-area: user;
     min-width: 0;
-    max-width: 45vw;
-    justify-self: end;
+    max-width: min(42vw, 180px);
+    margin-left: auto;
   }
 
   .save-nav-username {

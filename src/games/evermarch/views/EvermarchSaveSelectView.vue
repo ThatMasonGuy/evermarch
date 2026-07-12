@@ -28,8 +28,7 @@
         <!-- Local Save Card -->
         <div
           v-if="hasLocal"
-          class="save-card save-card-selected animate-fade-in-up"
-          @click="continueLocal"
+          class="save-card save-card-selected save-card-local animate-fade-in-up"
         >
           <div class="save-card-header">
             <div class="save-card-name">{{ localInfo.saveName }}</div>
@@ -83,6 +82,9 @@
             <p v-else>
               No cloud backup found. Play locally and back up from in-game settings.
             </p>
+            <p v-if="cloudMessage" class="save-cloud-message" :class="{ 'save-cloud-message-error': cloudMessageType === 'error' }">
+              {{ cloudMessage }}
+            </p>
           </div>
           <div class="save-card-meta" v-if="cloudInfo">
             <div class="save-meta-row">
@@ -107,9 +109,13 @@
             </div>
           </div>
           <div class="save-card-footer" v-if="cloudAvailable">
-            <button class="save-cloud-btn" @click.stop="restoreFromCloud">
+            <button
+              class="save-cloud-btn"
+              :disabled="restoreBusy"
+              @click.stop="requestCloudRestore"
+            >
               <CloudDownload :size="14" />
-              <span>Restore to Device</span>
+              <span>{{ restoreBusy ? 'Restoring...' : 'Restore to Device' }}</span>
             </button>
           </div>
         </div>
@@ -176,6 +182,26 @@
         </div>
       </Transition>
     </Teleport>
+
+    <ConfirmModal
+      :visible="showRestoreConfirm"
+      title="Restore cloud backup?"
+      message="This will replace the save currently stored on this device. Your cloud backup will not be changed."
+      confirm-label="Restore backup"
+      @accept="confirmCloudRestore"
+      @cancel="showRestoreConfirm = false"
+    />
+
+    <ConfirmModal
+      :visible="!!restoreMessage"
+      title="Cloud restore"
+      :message="restoreMessage"
+      confirm-label="Close"
+      :alert-only="true"
+      :danger="restoreMessageType === 'error'"
+      @accept="restoreMessage = ''"
+      @cancel="restoreMessage = ''"
+    />
   </div>
 </template>
 
@@ -194,6 +220,7 @@ import { loadLocal, saveLocal, deleteLocalSave, pullFromCloud } from '../engine/
 import { markPlaySessionIntent } from '../engine/playSessionGate'
 import type { GameSaveData } from '../stores/gameStore'
 import { levelForXp } from '../data/xp'
+import ConfirmModal from '../components/ConfirmModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -222,6 +249,12 @@ const cloudComparisonLabel = computed(() => {
   if (diffMs > 0) return `Cloud is ${formatDurationDelta(diffMs)} newer than local.`
   return `Cloud is ${formatDurationDelta(Math.abs(diffMs))} older than local.`
 })
+const cloudMessage = ref('')
+const cloudMessageType = ref<'success' | 'error'>('success')
+const restoreBusy = ref(false)
+const showRestoreConfirm = ref(false)
+const restoreMessage = ref('')
+const restoreMessageType = ref<'success' | 'error'>('success')
 
 const showCreateModal = ref(false)
 const newSaveName = ref('')
@@ -286,20 +319,47 @@ function continueLocal() {
   enterGame()
 }
 
-async function restoreFromCloud() {
+function requestCloudRestore() {
   if (!authStore.user) return
   if (!cloudAvailable.value) return
 
   if (hasLocal.value) {
-    if (!confirm('This will overwrite your local save with the cloud backup. Continue?')) return
+    showRestoreConfirm.value = true
+    return
   }
+
+  void restoreFromCloud()
+}
+
+function confirmCloudRestore() {
+  showRestoreConfirm.value = false
+  void restoreFromCloud()
+}
+
+async function restoreFromCloud() {
+  if (!authStore.user || !cloudAvailable.value || restoreBusy.value) return
+
+  restoreBusy.value = true
+  cloudMessage.value = ''
 
   const data = cloudSaveData.value ?? await pullFromCloud(authStore.user.uid)
   if (data) {
     gameStore.deserialize(data)
-    saveLocal()
+    // Keep the cloud save's last-played timestamp so the game can calculate
+    // the full offline interval after the restore instead of treating the
+    // restore click as the last time the player played.
+    saveLocal({ preserveLastSavedAt: true })
+    cloudMessageType.value = 'success'
+    cloudMessage.value = 'Backup restored. Opening your adventure...'
     enterGame()
+  } else {
+    cloudMessageType.value = 'error'
+    cloudMessage.value = 'Restore failed. The cloud backup could not be read.'
+    restoreMessageType.value = 'error'
+    restoreMessage.value = cloudMessage.value
   }
+
+  restoreBusy.value = false
 }
 
 function handleCreateSave() {
@@ -451,6 +511,8 @@ function enterGame() {
   box-shadow: 0 6px 0 var(--em-block-shadow), inset 0 0 0 1px var(--color-accent-glow);
 }
 
+.save-card-local { cursor: default; }
+
 .save-card-header {
   display: flex;
   align-items: center;
@@ -504,6 +566,17 @@ function enterGame() {
   line-height: 1.6;
 }
 
+.save-cloud-message {
+  margin-top: 8px;
+  color: #86efac;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.save-cloud-message-error {
+  color: #fecaca;
+}
+
 .save-card-footer {
   display: flex;
   align-items: center;
@@ -534,6 +607,10 @@ function enterGame() {
 }
 .save-cloud-btn:hover {
   background: rgba(139, 92, 246, 0.2);
+}
+.save-cloud-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 /* New Save Card */
@@ -684,5 +761,36 @@ function enterGame() {
 @media (max-width: 768px) {
   .save-content { padding: 32px 16px 64px; }
   .save-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .save-nav-inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "title user"
+      "back back";
+    gap: 8px 12px;
+    padding: 10px 16px;
+  }
+
+  .save-nav-back { grid-area: back; justify-self: start; }
+  .save-nav-title { grid-area: title; }
+  .save-nav-user {
+    grid-area: user;
+    min-width: 0;
+    max-width: 45vw;
+    justify-self: end;
+  }
+
+  .save-nav-username {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .save-content { padding: 28px 14px 52px; }
+  .modal-panel { padding: 24px 18px; }
 }
 </style>

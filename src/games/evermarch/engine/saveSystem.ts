@@ -16,11 +16,13 @@ const LOCAL_SAVE_KEY = 'evermarch_save'
 
 // ─── Local Save ────────────────────────────────────────────────
 
-export function saveLocal(): boolean {
+export function saveLocal(options: { preserveLastSavedAt?: boolean } = {}): boolean {
   try {
     const store = useGameStore()
     const data = store.serialize()
-    data.lastSavedAt = Date.now()
+    data.lastSavedAt = options.preserveLastSavedAt
+      ? Math.max(0, store.lastSavedAt || data.lastSavedAt)
+      : Date.now()
     store.lastSavedAt = data.lastSavedAt
     localStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify(data))
     return true

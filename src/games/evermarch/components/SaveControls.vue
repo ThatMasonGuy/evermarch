@@ -58,11 +58,11 @@
                 <CloudUpload :size="14" />
                 <span>{{ cloudBackupButtonLabel }}</span>
               </button>
-              <button
-                class="save-btn save-btn-ghost"
-                :disabled="!canUseCloud || cloudActionBusy"
-                @click="handlePullFromCloud"
-              >
+            <button
+              class="save-btn save-btn-ghost"
+              :disabled="!canUseCloud || cloudActionBusy"
+              @click="requestPullFromCloud"
+            >
                 <CloudDownload :size="14" />
                 <span>{{ restoreBusy ? 'Loading...' : 'Restore from Cloud' }}</span>
               </button>
@@ -78,7 +78,7 @@
               <AlertTriangle :size="14" />
               <span>Reset</span>
             </h3>
-            <button class="save-btn save-btn-danger" @click="handleReset">
+            <button class="save-btn save-btn-danger" @click="showResetConfirm = true">
               <Trash2 :size="14" />
               <span>Delete Save & Start Over</span>
             </button>
@@ -89,6 +89,25 @@
       </div>
     </Transition>
   </Teleport>
+
+  <ConfirmModal
+    :visible="showRestoreConfirm"
+    title="Restore cloud backup?"
+    message="This will overwrite the save currently stored on this device. Your cloud backup will not be changed."
+    confirm-label="Restore backup"
+    @accept="confirmPullFromCloud"
+    @cancel="showRestoreConfirm = false"
+  />
+
+  <ConfirmModal
+    :visible="showResetConfirm"
+    title="Delete this save?"
+    message="All local progress will be permanently deleted and a new adventure will be started."
+    confirm-label="Delete save"
+    :danger="true"
+    @accept="confirmReset"
+    @cancel="showResetConfirm = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -101,6 +120,7 @@ import { useGameStore } from '../stores/gameStore'
 import { useAuthStore } from '@/platform/stores/authStore'
 import { isFirebaseEnabled, isLocalPlatformMode } from '@/platform/services/firebase'
 import { saveLocal, pullFromCloud, deleteLocalSave } from '../engine/saveSystem'
+import ConfirmModal from './ConfirmModal.vue'
 
 const props = withDefaults(defineProps<{
   visible: boolean
@@ -137,6 +157,8 @@ const cloudBackupButtonLabel = computed(() => {
 })
 const cloudMessage = ref('')
 const cloudMessageType = ref<'success' | 'error'>('success')
+const showRestoreConfirm = ref(false)
+const showResetConfirm = ref(false)
 
 function formatPlaytime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -174,9 +196,18 @@ async function handlePushToCloud() {
   }
 }
 
+function requestPullFromCloud() {
+  if (!authStore.user || cloudActionBusy.value) return
+  showRestoreConfirm.value = true
+}
+
+function confirmPullFromCloud() {
+  showRestoreConfirm.value = false
+  void handlePullFromCloud()
+}
+
 async function handlePullFromCloud() {
   if (!authStore.user || cloudActionBusy.value) return
-  if (!confirm('This will overwrite your local save with the cloud backup. Continue?')) return
 
   restoreBusy.value = true
   cloudMessage.value = ''
@@ -185,7 +216,7 @@ async function handlePullFromCloud() {
 
   if (data) {
     store.deserialize(data)
-    saveLocal()
+    saveLocal({ preserveLastSavedAt: true })
     store.addLog('Save restored from cloud.', 'system')
     cloudMessage.value = 'Restored from cloud.'
     cloudMessageType.value = 'success'
@@ -195,9 +226,8 @@ async function handlePullFromCloud() {
   }
 }
 
-function handleReset() {
-  if (!confirm('Are you sure? This will permanently delete your save.')) return
-  if (!confirm('Really? All progress will be lost.')) return
+function confirmReset() {
+  showResetConfirm.value = false
   deleteLocalSave()
   store.resetToDefaults()
   saveLocal()

@@ -14,7 +14,7 @@
   "body": [
     {
       "type": "paragraph",
-      "text": "Welcome to the first weekly Evermarch update. It has been a busy week: 17 tracked improvements were completed across active mining, saves, offline progress, mobile play, inventory safety, and interface polish."
+      "text": "Welcome to the first weekly Evermarch update. It has been a busy week: all 20 tracked improvements were completed and verified across active mining, saves, offline progress, mobile play, inventory safety, and interface polish."
     },
     {
       "type": "heading",
@@ -27,7 +27,8 @@
         "Breaking mining blocks can reveal chests. Chests stack, can be opened in batches, and currently award TNT.",
         "TNT can now be used from the mining screen to blast every visible block and collect the rewards.",
         "Blocks now show clearer square-chip damage states, material rubble when broken, and a chest-found presentation instead of subtle line effects.",
-        "The mining board has been rebuilt for small screens so the mine face gets the space, depth rail, and labels it needs."
+        "The mining board has been rebuilt for small screens so the mine face gets the space, depth rail, and labels it needs.",
+        "Opening or restoring a character now immediately shows a full-screen loading state, so players have clear feedback while a save opens."
       ]
     },
     {
@@ -42,7 +43,9 @@
         "Cloud restores preserve the original save time, so the Welcome Back summary correctly reflects time spent away.",
         "The save picker now has a visible refresh action to recheck both device and cloud progress, plus clear feedback when a cloud restore succeeds or fails.",
         "The return-from-idle modal has a solid, readable Continue action that stays clear even when its content scrolls.",
-        "Native alerts and browser confirmation prompts have been replaced with game-native modals."
+        "Native alerts and browser confirmation prompts have been replaced with game-native modals.",
+        "On a cloud-enabled account, continuing a local save now warns before it could overwrite more advanced cloud progress, with an elevated danger treatment when that backup is ahead.",
+        "The whole mine face, including empty spaces after a block breaks, now blocks browser touch gestures so repeated mobile taps do not zoom or recenter the page."
       ]
     },
     {
@@ -59,6 +62,7 @@
         "#5 — The mobile save-selection header now keeps its back action, Evermarch title, and player name on one compact row.",
         "#6 — A save will no longer open or resume without an explicit Continue action from the player.",
         "#7 — Restoring a backup now keeps its original timestamp, fixing incorrect Welcome Back time and reward calculations.",
+        "#8 — The full mine face, including broken-block spaces and grid gaps, now prevents browser gestures so repeated mobile taps do not zoom or recenter the game.",
         "#9 — Hold-and-drag mining now follows the block beneath your pointer, continues after a block breaks, and stops when you release or leave the mine face.",
         "#10 — Active mining now fits a phone screen properly, with a square mine face, matched depth rail, visible depth labels, and no wasted Mining mode card.",
         "#11 — Rhythm multipliers and the redundant mining layer bar are gone in favour of direct manual block breaking.",
@@ -68,6 +72,8 @@
         "#15 — Browser alert, confirm, and prompt dialogs have been replaced with consistent Evermarch modals.",
         "#16 — Active-mining XP is now capped and balanced against routine mining instead of rewarding uncontrolled rapid tapping.",
         "#17 — The character-selection page now includes a refresh control for checking current device and cloud saves.",
+        "#18 — Continuing a device save now warns before it can overwrite cloud progress, highlighting the risk when the cloud save has higher level or more play time.",
+        "#19 — Opening, restoring, or creating a character now shows a non-dismissable full-screen loading state until the game is ready.",
         "#20 — The Welcome Back modal now uses an opaque, separated Continue button that remains readable over scrollable content."
       ]
     },

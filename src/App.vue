@@ -6,13 +6,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, nextTick } from 'vue'
+import { onMounted, nextTick } from 'vue'
 import { RouterView } from 'vue-router'
 import { useAuthStore } from '@/platform/stores/authStore'
 
 const authStore = useAuthStore()
-
-let unsubscribe: (() => void) | undefined
 
 function dismissPreloader() {
   const el = document.getElementById('preloader')
@@ -23,13 +21,8 @@ function dismissPreloader() {
 }
 
 onMounted(async () => {
-  unsubscribe = authStore.init()
   await nextTick()
   // Give the app a moment to render, then dismiss the preloader
   setTimeout(dismissPreloader, 400)
-})
-
-onUnmounted(() => {
-  unsubscribe?.()
 })
 </script>

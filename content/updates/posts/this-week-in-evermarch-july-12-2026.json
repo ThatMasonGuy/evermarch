@@ -1,0 +1,73 @@
+{
+  "slug": "this-week-in-evermarch-july-12-2026",
+  "title": "This Week in Evermarch: The Chronicle Begins",
+  "excerpt": "Our first weekly Evermarch update captures the current save flow, an active mining run, and a new public archive that will preserve the game's journey from here.",
+  "publishedAt": "2026-07-12",
+  "category": "Weekly update",
+  "keywords": [
+    "This Week in Evermarch",
+    "Evermarch update",
+    "browser idle RPG development",
+    "active mining minigame",
+    "Evermarch devlog"
+  ],
+  "body": [
+    {
+      "type": "paragraph",
+      "text": "Welcome to the first weekly Evermarch update. This is the start of a regular record of what changed, what is taking shape, and what the game looked like along the way. The goal is simple: make the journey visible for players now and easy to revisit in the future."
+    },
+    {
+      "type": "heading",
+      "text": "A public home for the journey"
+    },
+    {
+      "type": "paragraph",
+      "text": "Evermarch now has a dedicated update archive on the Tempest Studios play site. Each post has its own permanent page, search-friendly metadata, and a place for in-game screenshots. Future weekly notes will live alongside the game instead of disappearing into development history."
+    },
+    {
+      "type": "heading",
+      "text": "Current build snapshot"
+    },
+    {
+      "type": "paragraph",
+      "text": "The screenshots below capture the current playable build: the save selector that lets an adventurer continue a local journey, an offline-progress return with time and rewards credited, and the active mining board with a Rune Essence target, depth tracking, mastery, and an ore unlock rail."
+    },
+    {
+      "type": "list",
+      "items": [
+        "Save selection keeps local adventures clear and easy to resume.",
+        "Offline progress reports the time away, earned experience, items, and lane activity on return.",
+        "Active mining presents a block-face board, depth milestones, target information, and resource progression in one focused play surface."
+      ]
+    },
+    {
+      "type": "heading",
+      "text": "A smoother first step"
+    },
+    {
+      "type": "paragraph",
+      "text": "We also tightened the app's startup order so local sessions begin authentication before route checks run. That prevents the save screen from waiting on a session that has not had a chance to initialize, making development and local play more reliable."
+    },
+    {
+      "type": "paragraph",
+      "text": "Next week, this space will focus on the work completed during the week and the most interesting player-visible changes. For now, consider this the first page of Evermarch's public chronicle."
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "images/this-week-in-evermarch-july-12-2026/save-select.png",
+      "alt": "The Evermarch save selector showing a local adventure, total level, elapsed play time, and a Continue Adventure button.",
+      "caption": "The current save selector keeps local adventures ready to resume."
+    },
+    {
+      "src": "images/this-week-in-evermarch-july-12-2026/active-mining.png",
+      "alt": "The Evermarch active mining screen with a Welcome Back summary for offline progress, Rune Essence mine face, depth meter, and ore progression list.",
+      "caption": "Returning after time away credits progress before sending the player back to the active mining face."
+    },
+    {
+      "src": "images/this-week-in-evermarch-july-12-2026/mine-face.png",
+      "alt": "The Evermarch active mining screen showing a Rune Essence target, block-face board, zero metre depth, and unlocked ore options.",
+      "caption": "The active mining board in the current build, with depth, target, mastery, and ore progression all in view."
+    }
+  ]
+}

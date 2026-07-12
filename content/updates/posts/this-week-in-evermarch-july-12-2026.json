@@ -1,7 +1,7 @@
 {
   "slug": "this-week-in-evermarch-july-12-2026",
   "title": "This Week in Evermarch: The Chronicle Begins",
-  "excerpt": "Our first weekly Evermarch update captures the current save flow, an active mining run, and a new public archive that will preserve the game's journey from here.",
+  "excerpt": "Active mining received a major hands-on overhaul, with drag mining, chest rewards, TNT, clearer damage states, mobile improvements, and a long list of save and interface fixes.",
   "publishedAt": "2026-07-12",
   "category": "Weekly update",
   "keywords": [
@@ -14,15 +14,62 @@
   "body": [
     {
       "type": "paragraph",
-      "text": "Welcome to the first weekly Evermarch update. This is the start of a regular record of what changed, what is taking shape, and what the game looked like along the way. The goal is simple: make the journey visible for players now and easy to revisit in the future."
+      "text": "Welcome to the first weekly Evermarch update. It has been a busy week: 17 tracked improvements were completed across active mining, saves, offline progress, mobile play, inventory safety, and interface polish."
     },
     {
       "type": "heading",
-      "text": "A public home for the journey"
+      "text": "What's new"
     },
     {
-      "type": "paragraph",
-      "text": "Evermarch now has a dedicated update archive on the Tempest Studios play site. Each post has its own permanent page, search-friendly metadata, and a place for in-game screenshots. Future weekly notes will live alongside the game instead of disappearing into development history."
+      "type": "list",
+      "items": [
+        "Active mining is now truly hands-on: hold and drag across the mine face to keep striking blocks as you move.",
+        "Breaking mining blocks can reveal chests. Chests stack, can be opened in batches, and currently award TNT.",
+        "TNT can now be used from the mining screen to blast every visible block and collect the rewards.",
+        "Blocks now show clearer square-chip damage states, material rubble when broken, and a chest-found presentation instead of subtle line effects.",
+        "The mining board has been rebuilt for small screens so the mine face gets the space, depth rail, and labels it needs."
+      ]
+    },
+    {
+      "type": "heading",
+      "text": "What's changed"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Active mining no longer uses rhythm multipliers or the old layer progress bar. Your manual strikes are the focus.",
+        "Mining experience is now paced at the intended 2.5x routine-mining rate, with a strike cadence cap and accurate fractional XP carry-over.",
+        "Cloud restores preserve the original save time, so the Welcome Back summary correctly reflects time spent away.",
+        "The save picker now has a visible refresh action to recheck both device and cloud progress, plus clear feedback when a cloud restore succeeds or fails.",
+        "The return-from-idle modal has a solid, readable Continue action that stays clear even when its content scrolls.",
+        "Native alerts and browser confirmation prompts have been replaced with game-native modals."
+      ]
+    },
+    {
+      "type": "heading",
+      "text": "Everything completed this week"
+    },
+    {
+      "type": "list",
+      "items": [
+        "#1 — Inventory summaries now hide Filtered Value when All is selected and let the remaining values use the space naturally.",
+        "#2 — The inventory sort selector now has a readable Evermarch-styled surface, text, options, hover state, and focus state.",
+        "#3 — All But 1 is now a safe one-shot sale calculation that protects the last item, respects a manually entered 0, and never resets that choice during routine updates.",
+        "#4 — Restore to device now restores a cloud save correctly and clearly reports loading, success, or failure.",
+        "#5 — The mobile save-selection header now keeps its back action, Evermarch title, and player name on one compact row.",
+        "#6 — A save will no longer open or resume without an explicit Continue action from the player.",
+        "#7 — Restoring a backup now keeps its original timestamp, fixing incorrect Welcome Back time and reward calculations.",
+        "#9 — Hold-and-drag mining now follows the block beneath your pointer, continues after a block breaks, and stops when you release or leave the mine face.",
+        "#10 — Active mining now fits a phone screen properly, with a square mine face, matched depth rail, visible depth labels, and no wasted Mining mode card.",
+        "#11 — Rhythm multipliers and the redundant mining layer bar are gone in favour of direct manual block breaking.",
+        "#12 — Mining damage now uses three clear square-chip patterns with staged progression, rubble, and no diagonal or rotational crack glyphs.",
+        "#13 — Mining chests now spawn, enter inventory, open in batches of up to 1,000, and award one or two TNT each.",
+        "#14 — TNT is now a functional mining tool with a blast animation that breaks the visible mine face.",
+        "#15 — Browser alert, confirm, and prompt dialogs have been replaced with consistent Evermarch modals.",
+        "#16 — Active-mining XP is now capped and balanced against routine mining instead of rewarding uncontrolled rapid tapping.",
+        "#17 — The character-selection page now includes a refresh control for checking current device and cloud saves.",
+        "#20 — The Welcome Back modal now uses an opaque, separated Continue button that remains readable over scrollable content."
+      ]
     },
     {
       "type": "heading",
@@ -30,27 +77,11 @@
     },
     {
       "type": "paragraph",
-      "text": "The screenshots below capture the current playable build: the save selector that lets an adventurer continue a local journey, an offline-progress return with time and rewards credited, and the active mining board with a Rune Essence target, depth tracking, mastery, and an ore unlock rail."
-    },
-    {
-      "type": "list",
-      "items": [
-        "Save selection keeps local adventures clear and easy to resume.",
-        "Offline progress reports the time away, earned experience, items, and lane activity on return.",
-        "Active mining presents a block-face board, depth milestones, target information, and resource progression in one focused play surface."
-      ]
-    },
-    {
-      "type": "heading",
-      "text": "A smoother first step"
+      "text": "The screenshots below show the result of this week's work: a clear save selector, an offline-progress return summary, and the active Rune Essence mining face with depth tracking, block damage, mastery, and an ore unlock rail."
     },
     {
       "type": "paragraph",
-      "text": "We also tightened the app's startup order so local sessions begin authentication before route checks run. That prevents the save screen from waiting on a session that has not had a chance to initialize, making development and local play more reliable."
-    },
-    {
-      "type": "paragraph",
-      "text": "Next week, this space will focus on the work completed during the week and the most interesting player-visible changes. For now, consider this the first page of Evermarch's public chronicle."
+      "text": "This is the beginning of the weekly Evermarch journal. Future updates will keep the same focus: what changed, what is new, and how the game is evolving for players."
     }
   ],
   "screenshots": [

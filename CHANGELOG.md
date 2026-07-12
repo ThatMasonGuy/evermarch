@@ -10,6 +10,10 @@
 - Prevent browser touch gestures from activating through any part of the active mine face (#8).
 - Cap active-mining strike cadence and balance its XP at 2.5 times routine pace (#16).
 
+### Added
+
+- Add a character-selection refresh control that reloads local and cloud save information (#17).
+
 ## [v0.2.0] - 2026-07-12
 
 ### Added

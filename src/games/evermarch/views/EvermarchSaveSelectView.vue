@@ -11,8 +11,20 @@
           <Compass :size="18" />
           <span>Evermarch</span>
         </div>
-        <div class="save-nav-user">
-          <span class="save-nav-username">{{ authStore.displayName }}</span>
+        <div class="save-nav-actions">
+          <button
+            type="button"
+            class="save-nav-refresh"
+            :disabled="refreshingSaves"
+            :title="refreshingSaves ? 'Refreshing saved progress' : 'Refresh saved progress'"
+            @click="refreshSaves"
+          >
+            <RefreshCw :size="15" :class="{ 'save-nav-refreshing': refreshingSaves }" />
+            <span>{{ refreshingSaves ? 'Refreshing' : 'Refresh' }}</span>
+          </button>
+          <div class="save-nav-user">
+            <span class="save-nav-username">{{ authStore.displayName }}</span>
+          </div>
         </div>
       </div>
     </nav>
@@ -211,7 +223,7 @@ import { useRouter } from 'vue-router'
 import {
   ArrowLeft, Compass, TrendingUp, Clock, Calendar, Coins,
   Cloud, CloudDownload, HardDrive,
-  Plus, Play
+  Plus, Play, RefreshCw
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/platform/stores/authStore'
 import { isFirebaseEnabled } from '@/platform/services/firebase'
@@ -237,6 +249,7 @@ const localInfo = ref({
 })
 
 const cloudLoading = ref(false)
+const refreshingSaves = ref(false)
 const cloudAvailable = ref(false)
 const cloudSaveData = ref<GameSaveData | null>(null)
 const cloudInfo = computed(() => cloudSaveData.value ? saveInfoFromData(cloudSaveData.value) : null)
@@ -261,21 +274,35 @@ const newSaveName = ref('')
 const portalHref = import.meta.env.DEV ? '/' : '/evermarch'
 
 onMounted(async () => {
-  // Check local save
-  const data = loadLocal()
-  if (data) {
-    hasLocal.value = true
-    localInfo.value = saveInfoFromData(data)
-  }
+  await refreshSaves()
+})
 
-  // Check cloud save
+async function refreshSaves() {
+  if (refreshingSaves.value) return
+  refreshingSaves.value = true
+  cloudMessage.value = ''
+
+  const data = loadLocal()
+  hasLocal.value = data !== null
+  if (data) localInfo.value = saveInfoFromData(data)
+
   if (authStore.user) {
     cloudLoading.value = true
-    cloudSaveData.value = await pullFromCloud(authStore.user.uid)
-    cloudAvailable.value = cloudSaveData.value !== null
-    cloudLoading.value = false
+    try {
+      cloudSaveData.value = await pullFromCloud(authStore.user.uid)
+      cloudAvailable.value = cloudSaveData.value !== null
+    } catch {
+      cloudSaveData.value = null
+      cloudAvailable.value = false
+      cloudMessageType.value = 'error'
+      cloudMessage.value = 'Could not refresh the cloud backup. Try again.'
+    } finally {
+      cloudLoading.value = false
+    }
   }
-})
+
+  refreshingSaves.value = false
+}
 
 function saveInfoFromData(data: GameSaveData) {
   return {
@@ -431,10 +458,36 @@ function enterGame() {
   font-weight: 700;
   color: var(--color-accent-light);
 }
+.save-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.save-nav-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: rgba(0, 0, 0, 0.12);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.save-nav-refresh:hover:not(:disabled) { color: var(--color-accent-light); border-color: var(--color-border-hover); }
+.save-nav-refresh:disabled { opacity: 0.62; cursor: wait; }
+.save-nav-refreshing { animation: save-nav-refresh-spin 0.8s linear infinite; }
 .save-nav-username {
   font-size: 12px;
   color: var(--color-text-secondary);
 }
+
+@keyframes save-nav-refresh-spin { to { transform: rotate(360deg); } }
 
 /* Content */
 .save-content {
@@ -780,6 +833,8 @@ function enterGame() {
   }
   .save-nav-back span { display: none; }
   .save-nav-title { min-width: 0; }
+  .save-nav-refresh span { display: none; }
+  .save-nav-refresh { width: 28px; padding: 0; justify-content: center; }
   .save-nav-user {
     min-width: 0;
     max-width: min(42vw, 180px);

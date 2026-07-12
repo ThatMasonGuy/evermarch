@@ -205,6 +205,16 @@
     />
 
     <ConfirmModal
+      :visible="showLocalOverwriteConfirm"
+      title="Continue with device save?"
+      :message="localOverwriteMessage"
+      confirm-label="Continue with device save"
+      :danger="cloudOverwriteRisk"
+      @accept="confirmLocalContinue"
+      @cancel="showLocalOverwriteConfirm = false"
+    />
+
+    <ConfirmModal
       :visible="!!restoreMessage"
       title="Cloud restore"
       :message="restoreMessage"
@@ -266,8 +276,23 @@ const cloudMessage = ref('')
 const cloudMessageType = ref<'success' | 'error'>('success')
 const restoreBusy = ref(false)
 const showRestoreConfirm = ref(false)
+const showLocalOverwriteConfirm = ref(false)
 const restoreMessage = ref('')
 const restoreMessageType = ref<'success' | 'error'>('success')
+const cloudOverwriteRisk = computed(() => {
+  if (!cloudInfo.value || !hasLocal.value) return false
+  return cloudInfo.value.totalLevel > localInfo.value.totalLevel
+    || cloudInfo.value.playtime > localInfo.value.playtime
+})
+const localOverwriteMessage = computed(() => {
+  if (!cloudInfo.value) return ''
+  const cloudProgress = `Cloud: level ${cloudInfo.value.totalLevel}, ${formatPlaytime(cloudInfo.value.playtime)} played.`
+  const localProgress = `This device: level ${localInfo.value.totalLevel}, ${formatPlaytime(localInfo.value.playtime)} played.`
+  const warning = cloudOverwriteRisk.value
+    ? 'The cloud backup has more progress. Continuing this device save may replace that progress during its next cloud sync.'
+    : 'Continuing this device save may replace the cloud backup during its next cloud sync.'
+  return `${warning}\n\n${cloudProgress}\n${localProgress}`
+})
 
 const showCreateModal = ref(false)
 const newSaveName = ref('')
@@ -343,6 +368,15 @@ function formatDurationDelta(ms: number): string {
 }
 
 function continueLocal() {
+  if (cloudAvailable.value && cloudInfo.value) {
+    showLocalOverwriteConfirm.value = true
+    return
+  }
+  enterGame()
+}
+
+function confirmLocalContinue() {
+  showLocalOverwriteConfirm.value = false
   enterGame()
 }
 

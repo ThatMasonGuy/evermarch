@@ -15,6 +15,7 @@
 - Add a character-selection refresh control that reloads local and cloud save information (#17).
 - Add a warning before a device save can supersede an available cloud backup, with danger styling for higher cloud progress (#18).
 - Add a blocking loading state while a selected character opens (#19).
+- Expand the mobile mine face, compress its depth rail, and remove the redundant mining-mode card (#10).
 
 ## [v0.2.0] - 2026-07-12
 

@@ -174,13 +174,6 @@
         </div>
       </div>
 
-      <div class="active-mining-progress-card active-mining-strike-card">
-        <div class="active-mining-progress-row">
-          <span>Mining mode</span>
-          <strong>Manual strikes</strong>
-        </div>
-        <small>Hold and drag across the face to keep mining.</small>
-      </div>
     </footer>
 
     <Transition name="active-mining-blast">
@@ -1133,39 +1126,39 @@ function depthTickTop(tick: number): string {
   }
 
   .active-mining-stage {
-    grid-template-columns: 62px minmax(0, 1fr);
-    min-height: 370px;
-    gap: 8px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    min-height: 400px;
+    gap: 6px;
   }
 
   .active-mining-depth-rail {
-    padding: 10px 5px;
+    padding: 6px 3px;
   }
 
   .active-mining-depth-column {
-    left: 32px;
-    width: 24px;
+    left: 14px;
+    width: 14px;
   }
 
   .active-mining-depth-marker {
-    left: 4px;
+    left: -2px;
   }
 
   .active-mining-depth-marker strong,
   .active-mining-depth-tick {
-    font-size: 10px;
+    display: none;
   }
 
   .active-mining-board-frame {
     width: 100%;
-    max-width: 220px;
+    max-width: none;
+    max-height: none;
     padding: 8px;
   }
 
   .active-mining-window {
-    justify-content: flex-start;
-    padding-left: 8px;
-    padding-right: 8px;
+    justify-content: center;
+    padding: 0;
   }
 
   .active-mining-board {
@@ -1201,9 +1194,9 @@ function depthTickTop(tick: number): string {
   }
 
   .active-mining-stage {
-    grid-template-columns: 54px minmax(0, 1fr);
-    min-height: 330px;
-    gap: 8px;
+    grid-template-columns: 36px minmax(0, 1fr);
+    min-height: 380px;
+    gap: 5px;
   }
 
   .active-mining-window::before,

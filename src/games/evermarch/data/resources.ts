@@ -30,6 +30,8 @@ export const RESOURCES: Record<ResourceId, ResourceDefinition> = {
   onion: { id: 'onion', name: 'Onion', icon: 'Sprout', category: 'crop', sellValue: 5 },
   tomato: { id: 'tomato', name: 'Tomato', icon: 'Sprout', category: 'crop', sellValue: 8 },
   wheat: { id: 'wheat', name: 'Wheat', icon: 'Wheat', category: 'crop', sellValue: 6 },
+  chest: { id: 'chest', name: "Miner's Chest", icon: 'PackageOpen', category: 'misc', sellValue: 0 },
+  tnt: { id: 'tnt', name: 'TNT', icon: 'Bomb', category: 'misc', sellValue: 0 },
   gold: { id: 'gold', name: 'Gold', icon: 'Coins', category: 'currency', sellValue: 0 },
 }
 

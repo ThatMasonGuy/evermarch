@@ -89,6 +89,16 @@ export interface GainToast {
   updatedAt: number
 }
 
+export interface ChestReward {
+  resourceId: string
+  amount: number
+}
+
+export interface ChestOpenResult {
+  opened: number
+  rewards: ChestReward[]
+}
+
 export interface ActiveCadenceState {
   multiplier: number
   ratio: number
@@ -243,9 +253,11 @@ const MAX_GAIN_TOASTS = 6
 const FARMING_PLOT_UNLOCK_LEVELS = [1, 10, 25, 45, 70, 90]
 const FARMING_MIN_GROWTH_MS = 6 * 60 * 60 * 1000
 const FARMING_MAX_GROWTH_MS = 12 * 60 * 60 * 1000
-const COLLECTIBLE_RESOURCE_IDS = Array.from(new Set(
-  ALL_TASKS.flatMap((task) => task.drops.map((drop) => drop.resourceId))
-)).sort((a, b) => getResourceDefinition(a).name.localeCompare(getResourceDefinition(b).name))
+const COLLECTIBLE_RESOURCE_IDS = Array.from(new Set([
+  ...ALL_TASKS.flatMap((task) => task.drops.map((drop) => drop.resourceId)),
+  'chest',
+  'tnt',
+])).sort((a, b) => getResourceDefinition(a).name.localeCompare(getResourceDefinition(b).name))
 
 // ─── Store ─────────────────────────────────────────────────────
 
@@ -279,6 +291,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
   let logCounter = 0
   const gainToasts = ref<GainToast[]>([])
   const activeCadence = ref<ActiveCadenceState>(createActiveCadenceState())
+  const activeMiningBlastNonce = ref(0)
   let toastCounter = 0
   const toastTimers = new Map<number, ReturnType<typeof setTimeout>>()
 
@@ -607,6 +620,27 @@ export const useGameStore = defineStore('evermarch-game', () => {
         icon: 'Coins',
       })
     }
+  }
+
+  function openChests(amount: number): ChestOpenResult {
+    const requested = Math.max(0, Math.floor(amount))
+    const opened = Math.min(requested, getItemCount('chest'))
+    if (opened <= 0 || !removeItem('chest', opened)) return { opened: 0, rewards: [] }
+
+    recordItemConsumed('chest', opened)
+    const tntAmount = Array.from({ length: opened }, () => 1 + Math.floor(Math.random() * 2))
+      .reduce((sum, reward) => sum + reward, 0)
+    addItem('tnt', tntAmount)
+    addLog(
+      `Opened ${opened.toLocaleString()} ${opened === 1 ? 'chest' : 'chests'} and found ${tntAmount.toLocaleString()} TNT.`,
+      'gain',
+    )
+
+    return { opened, rewards: [{ resourceId: 'tnt', amount: tntAmount }] }
+  }
+
+  function triggerActiveMiningBlast() {
+    activeMiningBlastNonce.value++
   }
 
   function sellItem(resourceId: string, amount: number): number {
@@ -1280,6 +1314,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     activityLog,
     gainToasts,
     activeCadence,
+    activeMiningBlastNonce,
     gameLoaded,
     // Computed
     totalLevel,
@@ -1321,6 +1356,8 @@ export const useGameStore = defineStore('evermarch-game', () => {
     removeItem,
     addGold,
     sellItem,
+    openChests,
+    triggerActiveMiningBlast,
     ensureActiveMiningState,
     damageActiveMiningBlock,
     setLaneTask,

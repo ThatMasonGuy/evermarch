@@ -15,7 +15,7 @@ import { getResourceDefinition, getResourceName } from '../data/resources'
 import { saveLocal } from './saveSystem'
 import { SKILLS, type LaneType, type SkillId } from '../data/skills'
 import { syncGlobalStatsForCurrentUser } from './globalStats'
-import { getActiveMiningClickDamageMs, type ActiveMiningBlockState } from './activeMining'
+import type { ActiveMiningBlockState } from './activeMining'
 
 const TICK_INTERVAL = 100 // ms — game ticks 10 times per second
 const AUTO_SAVE_INTERVAL = 30_000 // auto-save every 30 seconds
@@ -329,22 +329,16 @@ export function performActiveMiningBlock(blockId: string) {
 
   store.ensureActiveMiningState(task.id)
 
-  const cadence = getActiveClickCadence(task.id, Date.now())
-  store.recordActiveCadence({
-    multiplier: cadence.multiplier,
-    ratio: cadence.multiplier / MAX_ACTIVE_SPEED_MULTIPLIER,
-    progressMs: cadence.progressMs,
-    clickGapMs: cadence.clickGapMs,
-  })
-  const recordedWorkMs = cadence.activeWorkMs > 0 ? cadence.activeWorkMs : ACTIVE_TARGET_CLICK_INTERVAL_MS
-  store.recordActiveClick(task.id, task.skillId, recordedWorkMs)
+  // Active mining is block-driven. Each pointer action applies one fixed
+  // manual strike; mining no longer uses the generic 1x/2x/3x cadence meter.
+  const damageMs = Math.max(280, Math.round(task.baseInterval / 8))
+  store.recordActiveClick(task.id, task.skillId, 0)
 
   if (!canPayCosts(task, store, 1)) {
     store.addLog(`Need ${formatCosts(task.costs ?? [], 1)} for ${task.name}`, 'system')
     return
   }
 
-  const damageMs = getActiveMiningClickDamageMs(task, cadence)
   const result = store.damageActiveMiningBlock(task.id, blockId, damageMs)
 
   if (!result.brokenBlock) return
@@ -355,8 +349,51 @@ export function performActiveMiningBlock(blockId: string) {
     result.brokenBlock,
     result.layerCleared,
     result.nextDepthMeters,
-    Math.max(0, result.damageAppliedMs - recordedWorkMs),
+    0,
   )
+}
+
+export interface ActiveMiningBlastResult {
+  completed: boolean
+  blocksBroken: number
+  chestsFound: number
+}
+
+/** Break every visible block with one TNT charge. */
+export function detonateActiveMiningTnt(): ActiveMiningBlastResult {
+  const store = useGameStore()
+  const lane = store.lanes.active
+  const task = lane.taskId ? getTaskById(lane.taskId) : null
+
+  if (!task || task.skillId !== 'mining') {
+    store.addLog('TNT can only be used while active mining is selected.', 'system')
+    return { completed: false, blocksBroken: 0, chestsFound: 0 }
+  }
+
+  if (!store.removeItem('tnt', 1)) {
+    store.addLog('You do not have any TNT to use.', 'system')
+    return { completed: false, blocksBroken: 0, chestsFound: 0 }
+  }
+
+  store.recordItemConsumed('tnt', 1)
+  store.ensureActiveMiningState(task.id)
+  const blockIds = store.activeMining.blocks.filter((block) => !block.broken).map((block) => block.id)
+  let blocksBroken = 0
+  let chestsFound = 0
+
+  for (const blockId of blockIds) {
+    const result = store.damageActiveMiningBlock(task.id, blockId, Number.MAX_SAFE_INTEGER)
+    if (!result.brokenBlock) continue
+
+    blocksBroken++
+    grantActiveMiningBlockReward(task, store, result.brokenBlock, result.layerCleared, result.nextDepthMeters, 0)
+    if (result.brokenBlock.containsChest) chestsFound++
+  }
+
+  store.triggerActiveMiningBlast()
+  const chestText = chestsFound > 0 ? ` and found ${chestsFound} chest${chestsFound === 1 ? '' : 's'}` : ''
+  store.addLog(`TNT blasted ${blocksBroken} blocks${chestText}.`, 'gain')
+  return { completed: blocksBroken > 0, blocksBroken, chestsFound }
 }
 
 function grantActiveMiningBlockReward(
@@ -382,6 +419,11 @@ function grantActiveMiningBlockReward(
 
   for (const drop of block.drops) {
     store.addItem(drop.resourceId, drop.amount)
+  }
+
+  if (block.containsChest) {
+    store.addItem('chest', 1)
+    store.addLog('A miner\'s chest was hidden in the block!', 'gain')
   }
 
   if (block.kind !== 'stone' && block.kind !== 'gravel') {

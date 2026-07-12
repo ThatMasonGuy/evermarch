@@ -133,6 +133,17 @@
           </div>
         </div>
 
+        <section v-if="selectedItem.id === 'chest'" class="inv-use-panel inv-use-panel-chest">
+          <div class="inv-use-heading"><PackageOpen :size="16" /><div><strong>Open chests</strong><span>Each chest contains 1 or 2 TNT.</span></div></div>
+          <button type="button" class="inv-use-btn" @click="showChestModal = true"><Sparkles :size="14" /> Open miner's chests</button>
+        </section>
+
+        <section v-if="selectedItem.id === 'tnt'" class="inv-use-panel inv-use-panel-tnt">
+          <div class="inv-use-heading"><Bomb :size="16" /><div><strong>Mining explosive</strong><span>Breaks every visible block in active mining.</span></div></div>
+          <button type="button" class="inv-use-btn" :disabled="!activeMiningSelected" @click="useSelectedTnt"><Bomb :size="14" /> {{ activeMiningSelected ? 'Use TNT on active mining' : 'Select active mining first' }}</button>
+          <p v-if="tntMessage" class="inv-use-message">{{ tntMessage }}</p>
+        </section>
+
         <section class="inv-sell-panel">
           <div class="inv-sell-heading">
             <span>Sell Amount</span>
@@ -304,6 +315,8 @@
       </aside>
     </section>
   </div>
+
+  <ChestOpeningModal :visible="showChestModal" :available="store.getItemCount('chest')" @close="showChestModal = false" />
 </template>
 
 <script setup lang="ts">
@@ -311,6 +324,7 @@ import type { Component } from 'vue'
 import { computed, markRaw, ref, watch } from 'vue'
 import {
   BarChart3,
+  Bomb,
   BookOpen,
   Coins,
   Filter,
@@ -323,6 +337,7 @@ import {
   PackageOpen,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Sprout,
   TreePine,
   Wheat,
@@ -330,9 +345,11 @@ import {
 } from 'lucide-vue-next'
 import { useGameStore, type ItemStats } from '../stores/gameStore'
 import { getResourceDefinition, getResourceName } from '../data/resources'
-import { ALL_TASKS, type TaskDefinition } from '../data/tasks'
+import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS } from '../data/skills'
 import { spriteForResource } from '../assets/visualAssets'
+import { detonateActiveMiningTnt } from '../engine/gameEngine'
+import ChestOpeningModal from './ChestOpeningModal.vue'
 
 type DetailTab = 'info' | 'stats' | 'upgrade'
 type SortMode = 'name' | 'value' | 'count' | 'recent'
@@ -381,8 +398,11 @@ const selectedItemId = ref<string | null>(null)
 const activeDetailTab = ref<DetailTab>('info')
 const sellAmount = ref(0)
 const allButOnePending = ref(false)
+const showChestModal = ref(false)
+const tntMessage = ref('')
 
 const iconMap: Record<string, Component> = {
+  Bomb,
   BookOpen,
   Coins,
   Fish,
@@ -490,6 +510,10 @@ const normalizedSellAmount = computed(() => clampSellAmount(sellAmount.value))
 const projectedSellValue = computed(() => (selectedItem.value?.sellValue ?? 0) * normalizedSellAmount.value)
 const hasSellableItem = computed(() => !!selectedItem.value && selectedItem.value.sellValue > 0 && selectedItem.value.count > 0)
 const canSellSelected = computed(() => hasSellableItem.value && maxSellAmount.value > 0)
+const activeMiningSelected = computed(() => {
+  const taskId = store.lanes.active.taskId
+  return !!taskId && getTaskById(taskId)?.skillId === 'mining'
+})
 
 watch(filteredItems, (items) => {
   if (items.length === 0) {
@@ -590,6 +614,11 @@ function sellSelected() {
   sellAmount.value = recalculateAllButOne
     ? Math.max(0, remaining - 1)
     : Math.min(amount, remaining)
+}
+
+function useSelectedTnt() {
+  const result = detonateActiveMiningTnt()
+  tntMessage.value = result.completed ? `Blast complete: ${result.blocksBroken} blocks broken.` : 'No blocks were broken.'
 }
 
 function buildItemDetail(resourceId: string): ItemDetail {
@@ -1209,6 +1238,31 @@ function formatTimestamp(value: number | null): string {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+
+.inv-use-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid rgba(246, 211, 107, 0.28);
+  border-radius: var(--radius-md);
+  background: rgba(246, 211, 107, 0.06);
+}
+
+.inv-use-panel-tnt {
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.06);
+}
+
+.inv-use-heading { display: flex; align-items: flex-start; gap: 7px; color: var(--em-gold); }
+.inv-use-panel-tnt .inv-use-heading { color: #fca5a5; }
+.inv-use-heading div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.inv-use-heading strong { font-size: 12px; }
+.inv-use-heading span { color: var(--color-text-muted); font-size: 10px; line-height: 1.4; }
+.inv-use-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 7px 10px; border: 1px solid #d97706; border-radius: var(--radius-sm); color: #fff7ed; background: #92400e; font-size: 11px; font-weight: 800; cursor: pointer; }
+.inv-use-panel-tnt .inv-use-btn { border-color: #ef4444; background: #991b1b; }
+.inv-use-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.inv-use-message { color: #fecaca; font-size: 10px; }
 
 .inv-sell-panel {
   display: grid;

@@ -18,10 +18,6 @@
           :xp-to-next="xpToNext"
           :mastery-level="masteryLevel"
           :is-task-mastered="isTaskMastered"
-          :active-pace-label="activePaceLabel"
-          :active-pace-percent="activePacePercent"
-          :active-progress-label="activeProgressLabel"
-          :active-target-label="activeTargetLabel"
         />
 
         <template v-else>

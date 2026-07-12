@@ -13,6 +13,7 @@ export interface ActiveMiningBlockState {
   variant: number
   tint: string
   broken: boolean
+  containsChest: boolean
 }
 
 export interface ActiveMiningState {
@@ -329,6 +330,7 @@ function createResourceBlock(
     variant,
     tint: tintForBlock(kind, resourceId),
     broken: false,
+    containsChest: randomFor(state, `chest-${index}`) < 0.01,
   }
 }
 
@@ -432,6 +434,7 @@ function normalizeBlocks(blocks: ActiveMiningBlockState[] | undefined): ActiveMi
         variant: nonNegativeInteger(block.variant),
         tint: typeof block.tint === 'string' && block.tint.length > 0 ? block.tint : tintForBlock(kind, block.resourceId),
         broken: Boolean(block.broken) || remainingMs <= 0,
+        containsChest: Boolean(block.containsChest),
       }
     })
 }

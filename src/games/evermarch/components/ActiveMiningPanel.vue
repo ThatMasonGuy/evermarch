@@ -58,7 +58,7 @@
         </div>
 
         <div class="active-mining-board-frame">
-          <div class="active-mining-board" :style="boardStyle">
+          <div class="active-mining-board" :style="boardStyle" @pointerleave="endMining">
             <button
               v-for="block in mining.blocks"
               :key="block.id"
@@ -71,7 +71,7 @@
               @pointerdown="beginMining(block.id, $event)"
               @pointerup="endMining"
               @pointercancel="endMining"
-              @pointerleave="endMining"
+              @pointerenter="continueMining(block.id)"
             >
               <span class="active-mine-block-texture"></span>
               <span v-if="block.kind !== 'stone' && block.kind !== 'gravel'" class="active-mine-ore">
@@ -95,6 +95,7 @@
               >
                 <span :style="{ width: durabilityWidth(block) }"></span>
               </span>
+              <span v-if="block.broken && block.containsChest" class="active-mine-chest-found">CHEST</span>
             </button>
           </div>
         </div>
@@ -109,17 +110,23 @@
         </span>
         <span>
           <small>Pickaxe</small>
-          <strong>{{ activePaceLabel }}</strong>
+          <strong>Manual</strong>
         </span>
       </div>
 
-      <div class="active-mining-tool">
+      <button
+        type="button"
+        class="active-mining-tool active-mining-tnt-tool"
+        :disabled="!canUseTnt"
+        title="Blast every block in the current mine face"
+        @click="useTnt"
+      >
         <span class="active-mining-tnt-icon">TNT</span>
         <span>
           <small>TNT</small>
-          <strong>{{ mining.tntCharges }}</strong>
+          <strong>{{ store.getItemCount('tnt') }}</strong>
         </span>
-      </div>
+      </button>
 
       <div class="active-mining-tool">
         <span class="active-mining-tool-icon">
@@ -142,16 +149,6 @@
 
       <div class="active-mining-progress-card">
         <div class="active-mining-progress-row">
-          <span>Layer</span>
-          <strong>{{ brokenBlockCount }} / {{ mining.blocks.length }}</strong>
-        </div>
-        <div class="active-mining-progress-track">
-          <span :style="{ width: layerProgressWidth }"></span>
-        </div>
-      </div>
-
-      <div class="active-mining-progress-card">
-        <div class="active-mining-progress-row">
           <span>Skill</span>
           <strong>{{ skillProgressLabel }}</strong>
         </div>
@@ -160,17 +157,22 @@
         </div>
       </div>
 
-      <div class="active-mining-progress-card active-mining-progress-card-wide">
+      <div class="active-mining-progress-card active-mining-strike-card">
         <div class="active-mining-progress-row">
-          <span>{{ activeProgressLabel }}</span>
-          <strong>{{ activePacePercent }}%</strong>
+          <span>Mining mode</span>
+          <strong>Manual strikes</strong>
         </div>
-        <div class="active-mining-progress-track active-mining-progress-track-gold">
-          <span :style="{ width: activePaceWidth }"></span>
-        </div>
-        <small>{{ activeTargetLabel }}</small>
+        <small>Hold and drag across the face to keep mining.</small>
       </div>
     </footer>
+
+    <Transition name="active-mining-blast">
+      <div v-if="blastActive" class="active-mining-blast-overlay" aria-live="polite">
+        <span class="active-mining-tnt-icon">TNT</span>
+        <strong>BLAST!</strong>
+        <small>Mine face cleared</small>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -181,7 +183,7 @@ import { Gem, Pickaxe, Ruler, Trophy } from 'lucide-vue-next'
 import { useGameStore } from '../stores/gameStore'
 import type { TaskDefinition } from '../data/tasks'
 import { getResourceDefinition } from '../data/resources'
-import { performActiveMiningBlock } from '../engine/gameEngine'
+import { detonateActiveMiningTnt, performActiveMiningBlock } from '../engine/gameEngine'
 import { getActiveMiningBlockProgress, type ActiveMiningBlockState } from '../engine/activeMining'
 import { TILE_SPRITES, spriteForResource, spriteForSkill } from '../assets/visualAssets'
 
@@ -192,15 +194,13 @@ const props = defineProps<{
   xpToNext: number
   masteryLevel: number
   isTaskMastered: boolean
-  activePaceLabel: string
-  activePacePercent: number
-  activeProgressLabel: string
-  activeTargetLabel: string
 }>()
 
 const store = useGameStore()
 let holdTimer: ReturnType<typeof setInterval> | null = null
+let blastTimer: ReturnType<typeof setTimeout> | null = null
 const heldBlockId = ref<string | null>(null)
+const blastActive = ref(false)
 
 const mining = computed(() => store.activeMining)
 const pickaxeSprite = computed(() => spriteForSkill('mining'))
@@ -219,15 +219,10 @@ const boardStyle = computed<CSSProperties>(() => ({
 const mineWindowLabel = computed(() =>
   `${taskChoiceLabel.value} mine face at ${mining.value.depthMeters} meters deep`
 )
-const brokenBlockCount = computed(() => mining.value.blocks.filter((block) => block.broken).length)
-const layerProgressWidth = computed(() => {
-  if (mining.value.blocks.length === 0) return '0%'
-  return `${Math.round((brokenBlockCount.value / mining.value.blocks.length) * 100)}%`
-})
 const skillProgressWidth = computed(() => `${Math.round(props.skillProgress * 100)}%`)
 const skillProgressLabel = computed(() => `${Math.round(props.skillProgress * 100)}%`)
-const activePaceWidth = computed(() => `${Math.max(0, Math.min(100, props.activePacePercent))}%`)
 const masteryLabel = computed(() => props.isTaskMastered ? 'Mastered' : `Lv.${props.masteryLevel}`)
+const canUseTnt = computed(() => store.getItemCount('tnt') > 0)
 const depthWindowMax = computed(() => Math.max(50, Math.ceil((mining.value.depthMeters + 10) / 10) * 10))
 const depthTicks = computed(() => {
   const step = depthWindowMax.value / 5
@@ -245,14 +240,22 @@ watch(
   { immediate: true },
 )
 
+watch(() => store.activeMiningBlastNonce, () => {
+  blastActive.value = true
+  if (blastTimer) clearTimeout(blastTimer)
+  blastTimer = setTimeout(() => {
+    blastActive.value = false
+    blastTimer = null
+  }, 700)
+})
+
 onBeforeUnmount(() => {
   endMining()
+  if (blastTimer) clearTimeout(blastTimer)
 })
 
 function beginMining(blockId: string, event: PointerEvent) {
   event.preventDefault()
-  const target = event.currentTarget as HTMLElement
-  target.setPointerCapture?.(event.pointerId)
 
   endMining()
   heldBlockId.value = blockId
@@ -265,6 +268,12 @@ function beginMining(blockId: string, event: PointerEvent) {
       }
     }, 170)
   }
+}
+
+function continueMining(blockId: string) {
+  if (!heldBlockId.value || heldBlockId.value === blockId) return
+  heldBlockId.value = blockId
+  mineBlock(blockId)
 }
 
 function endMining() {
@@ -281,6 +290,10 @@ function mineBlock(blockId: string) {
   if (!stillMineable) {
     endMining()
   }
+}
+
+function useTnt() {
+  detonateActiveMiningTnt()
 }
 
 function blockProgress(block: ActiveMiningBlockState): number {
@@ -324,7 +337,7 @@ function tileForBlock(block: ActiveMiningBlockState): string {
 
 function blockAriaLabel(block: ActiveMiningBlockState): string {
   const percent = Math.round(blockProgress(block) * 100)
-  if (block.broken) return `${block.label} broken`
+  if (block.broken) return block.containsChest ? "Miner's chest found" : `${block.label} broken`
   return `${block.label}, ${percent}% broken`
 }
 
@@ -338,6 +351,7 @@ function depthTickTop(tick: number): string {
   width: 100%;
   height: 100%;
   min-height: 0;
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
@@ -844,6 +858,19 @@ function depthTickTop(tick: number): string {
   border-color: rgba(246, 211, 107, 0.52);
 }
 
+.active-mining-tnt-tool {
+  border: 2px solid var(--em-block-border);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.active-mining-tnt-tool:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
 .active-mining-tool span:not(.active-mining-tool-icon):not(.active-mining-tnt-icon) {
   min-width: 0;
   display: flex;
@@ -907,6 +934,70 @@ function depthTickTop(tick: number): string {
 
 .active-mining-progress-track-gold span {
   background: linear-gradient(90deg, #d97706, var(--em-gold));
+}
+
+.active-mining-strike-card small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.active-mine-chest-found {
+  position: absolute;
+  inset: auto 4px 4px;
+  z-index: 3;
+  padding: 2px 3px;
+  border: 1px solid #f59e0b;
+  border-radius: 3px;
+  color: #fff7ed;
+  background: #92400e;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.active-mining-blast-overlay {
+  position: absolute;
+  inset: 12%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 3px solid #f59e0b;
+  border-radius: var(--radius-lg);
+  color: #fff7ed;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.9), rgba(69, 10, 10, 0.92));
+  box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.1), 0 0 40px rgba(239, 68, 68, 0.42);
+  pointer-events: none;
+  text-align: center;
+}
+
+.active-mining-blast-overlay strong {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 5vw, 38px);
+  letter-spacing: 0.08em;
+}
+
+.active-mining-blast-overlay small {
+  color: #fed7aa;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.active-mining-blast-enter-active { animation: active-mining-blast-in 0.22s ease-out; }
+.active-mining-blast-leave-active { animation: active-mining-blast-out 0.4s ease-in; }
+
+@keyframes active-mining-blast-in {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes active-mining-blast-out {
+  from { opacity: 1; }
+  to { opacity: 0; transform: scale(1.12); }
 }
 
 @media (max-width: 1180px) {

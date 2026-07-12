@@ -13,3 +13,4 @@
 - Selecting a character now shows a blocking loading message, so slow mobile opens have clear feedback and cannot accept extra taps (#19).
 - Mobile mining now gives the block face the available width, keeps the depth rail slim, and removes the redundant Mining mode card (#10).
 - The mobile depth rail now matches the mine face height, keeps its labels, and places the current-depth marker directly on the rail (#10).
+- The Continue action in the Welcome Back summary now stays clearly readable over scrollable progress details (#20).

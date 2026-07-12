@@ -435,8 +435,14 @@ function formatDuration(ms: number): string {
   gap: 7px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-accent);
-  background: var(--color-accent-glow);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-accent) 26%, var(--color-bg-elevated)),
+    var(--color-bg-elevated)
+  );
   color: var(--color-accent-light);
+  box-shadow: 0 -8px 18px color-mix(in srgb, var(--color-bg-deep) 76%, transparent);
+  backdrop-filter: blur(8px);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 700;
@@ -445,7 +451,11 @@ function formatDuration(ms: number): string {
 }
 
 .welcome-close:hover {
-  background: var(--color-accent-glow);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-accent) 38%, var(--color-bg-elevated)),
+    var(--color-bg-card)
+  );
 }
 
 .welcome-modal-enter-active,

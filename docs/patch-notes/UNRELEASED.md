@@ -12,3 +12,4 @@
 - Continuing a device save now warns before it can replace cloud progress; the warning is prominent when the cloud save is further ahead (#18).
 - Selecting a character now shows a blocking loading message, so slow mobile opens have clear feedback and cannot accept extra taps (#19).
 - Mobile mining now gives the block face the available width, keeps the depth rail slim, and removes the redundant Mining mode card (#10).
+- The mobile depth rail now matches the mine face height, keeps its labels, and places the current-depth marker directly on the rail (#10).

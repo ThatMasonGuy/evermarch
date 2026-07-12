@@ -1137,7 +1137,8 @@ function depthTickTop(tick: number): string {
 @media (max-width: 760px) {
   .active-mining-panel {
     height: auto;
-    min-height: 640px;
+    min-height: 0;
+    grid-template-rows: auto auto auto;
     padding: 10px;
   }
 
@@ -1159,8 +1160,8 @@ function depthTickTop(tick: number): string {
   }
 
   .active-mining-stage {
-    grid-template-columns: 40px minmax(0, 1fr);
-    min-height: 400px;
+    grid-template-columns: 58px minmax(0, 1fr);
+    min-height: 0;
     gap: 6px;
   }
 
@@ -1168,28 +1169,44 @@ function depthTickTop(tick: number): string {
     padding: 6px 3px;
   }
 
+  .active-mining-depth-scale {
+    min-height: 0;
+  }
+
   .active-mining-depth-column {
-    left: 14px;
+    left: 34px;
     width: 14px;
   }
 
   .active-mining-depth-marker {
-    left: -2px;
+    left: 37px;
   }
 
-  .active-mining-depth-marker strong,
-  .active-mining-depth-tick {
+  .active-mining-depth-marker strong {
     display: none;
+  }
+
+  .active-mining-depth-tick {
+    left: 1px;
+    display: block;
+    font-size: 9px;
+  }
+
+  .active-mining-depth-tick::after {
+    left: 30px;
+    width: 4px;
   }
 
   .active-mining-board-frame {
     width: 100%;
     max-width: none;
     max-height: none;
+    box-sizing: border-box;
     padding: 8px;
   }
 
   .active-mining-window {
+    aspect-ratio: 1;
     justify-content: center;
     padding: 0;
   }
@@ -1210,7 +1227,7 @@ function depthTickTop(tick: number): string {
 
 @media (max-width: 480px) {
   .active-mining-panel {
-    min-height: 590px;
+    min-height: 0;
   }
 
   .active-mining-brand-icon,
@@ -1227,10 +1244,15 @@ function depthTickTop(tick: number): string {
   }
 
   .active-mining-stage {
-    grid-template-columns: 36px minmax(0, 1fr);
-    min-height: 380px;
+    grid-template-columns: 52px minmax(0, 1fr);
+    min-height: 0;
     gap: 5px;
   }
+
+  .active-mining-depth-column { left: 30px; }
+  .active-mining-depth-marker { left: 33px; }
+  .active-mining-depth-tick { font-size: 8px; }
+  .active-mining-depth-tick::after { left: 27px; width: 3px; }
 
   .active-mining-window::before,
   .active-mining-window::after {

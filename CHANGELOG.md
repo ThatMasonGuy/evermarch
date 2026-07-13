@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [v0.4.0] - 2026-07-13
+
 ### Fixed
 
 - Calibrate active-mining chest generation to average one chest-bearing layer every 5-6 layers while preserving fair deterministic rolls across both mine grid sizes (#21).

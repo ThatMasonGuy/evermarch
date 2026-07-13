@@ -1,47 +1,35 @@
 <template>
   <Teleport to="body">
     <Transition name="chest-modal">
-      <div v-if="visible" class="chest-modal-backdrop" data-theme="evermarch" @click.self="$emit('close')">
+      <div v-if="visible && result" class="chest-modal-backdrop" data-theme="evermarch" @click.self="$emit('close')">
         <section class="chest-modal" role="dialog" aria-modal="true" aria-labelledby="chest-title">
+          <div class="chest-reveal" aria-hidden="true">
+            <span class="chest-reveal-glow"></span>
+            <img :src="SPECIAL_ITEM_SPRITES.minersChestOpen" alt="" />
+            <Sparkles :size="22" class="chest-reveal-spark chest-reveal-spark-left" />
+            <Sparkles :size="18" class="chest-reveal-spark chest-reveal-spark-right" />
+          </div>
+
           <header class="chest-heading">
-            <div class="chest-heading-icon"><PackageOpen :size="24" /></div>
-            <div>
-              <h2 id="chest-title">Open miner's chests</h2>
-              <p>Each chest contains 1 or 2 TNT.</p>
-            </div>
+            <span>Haul revealed</span>
+            <h2 id="chest-title">{{ result.opened === 1 ? "Miner's chest opened" : `${result.opened.toLocaleString()} chests opened` }}</h2>
           </header>
 
-          <div v-if="!result" class="chest-form">
-            <div class="chest-count-row">
-              <span>Chests to open</span>
-              <strong>{{ quantity.toLocaleString() }} / {{ available.toLocaleString() }}</strong>
-            </div>
-            <input v-model.number="quantity" class="chest-range" type="range" min="1" :max="Math.max(1, available)" aria-label="Number of chests to open" />
-            <div class="chest-controls">
-              <input v-model.number="quantity" class="chest-number" type="number" min="1" :max="available" aria-label="Number of chests" />
-              <button type="button" class="chest-secondary" @click="quantity = available">All</button>
-            </div>
-            <button type="button" class="chest-primary" :disabled="available <= 0" @click="openChests">
-              <Sparkles :size="15" /> Open {{ quantity.toLocaleString() }} {{ quantity === 1 ? 'chest' : 'chests' }}
-            </button>
-          </div>
-
-          <div v-else class="chest-result">
-            <div class="chest-reveal"><PackageOpen :size="38" /><Sparkles :size="16" /></div>
-            <strong>Chest haul revealed</strong>
-            <span>Opened {{ result.opened.toLocaleString() }} {{ result.opened === 1 ? 'chest' : 'chests' }}.</span>
-            <div class="chest-rewards">
-              <div v-for="reward in result.rewards" :key="reward.resourceId" class="chest-reward">
-                <Bomb :size="17" /><span>{{ reward.resourceId === 'tnt' ? 'TNT' : reward.resourceId }}</span><strong>+{{ reward.amount.toLocaleString() }}</strong>
-              </div>
-            </div>
-            <div class="chest-actions">
-              <button type="button" class="chest-secondary" @click="result = null">Open more</button>
-              <button type="button" class="chest-primary" @click="$emit('close')">Done</button>
+          <div class="chest-rewards" aria-label="Chest rewards">
+            <div v-for="reward in result.rewards" :key="reward.resourceId" class="chest-reward">
+              <span class="chest-reward-icon">
+                <img v-if="rewardSprite(reward.resourceId)" :src="rewardSprite(reward.resourceId) ?? ''" alt="" />
+                <Bomb v-else :size="24" />
+              </span>
+              <span>
+                <small>Added to inventory</small>
+                <strong>{{ getResourceName(reward.resourceId) }}</strong>
+              </span>
+              <b>+{{ reward.amount.toLocaleString() }}</b>
             </div>
           </div>
 
-          <button type="button" class="chest-close" @click="$emit('close')">Close</button>
+          <button type="button" class="chest-done" @click="$emit('close')">Done</button>
         </section>
       </div>
     </Transition>
@@ -49,65 +37,190 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { Bomb, PackageOpen, Sparkles } from 'lucide-vue-next'
-import { useGameStore, type ChestOpenResult } from '../stores/gameStore'
+import { Bomb, Sparkles } from 'lucide-vue-next'
+import type { ChestOpenResult } from '../stores/gameStore'
+import { getResourceDefinition, getResourceName } from '../data/resources'
+import { SPECIAL_ITEM_SPRITES, spriteForResource } from '../assets/visualAssets'
 
-const props = defineProps<{ visible: boolean; available: number }>()
+defineProps<{ visible: boolean; result: ChestOpenResult | null }>()
 defineEmits<{ close: [] }>()
 
-const store = useGameStore()
-const quantity = ref(1)
-const result = ref<ChestOpenResult | null>(null)
-
-watch(() => props.visible, (visible) => {
-  if (visible) {
-    quantity.value = Math.min(1, props.available)
-    result.value = null
-  }
-})
-
-watch(() => props.available, (available) => {
-  quantity.value = clampQuantity(quantity.value, available)
-})
-
-function openChests() {
-  const opened = store.openChests(clampQuantity(quantity.value, props.available))
-  if (opened.opened > 0) result.value = opened
-}
-
-function clampQuantity(value: number, max: number): number {
-  if (!Number.isFinite(value)) return 1
-  return Math.max(1, Math.min(Math.floor(value), Math.max(1, max)))
+function rewardSprite(resourceId: string): string | null {
+  const resource = getResourceDefinition(resourceId)
+  return spriteForResource(resourceId, resource.category)
 }
 </script>
 
 <style scoped>
-.chest-modal-backdrop { position: fixed; inset: 0; z-index: 11000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, 0.74); backdrop-filter: blur(5px); }
-.chest-modal { width: min(100%, 430px); display: flex; flex-direction: column; gap: 16px; padding: 24px; border: 2px solid rgba(246, 211, 107, 0.42); border-radius: var(--radius-xl); background: var(--color-bg-surface); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.46); }
-.chest-heading { display: flex; align-items: center; gap: 12px; }
-.chest-heading-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: var(--radius-md); color: var(--em-gold); background: rgba(246, 211, 107, 0.14); }
-.chest-heading h2 { font-family: var(--font-display); font-size: 18px; }
-.chest-heading p, .chest-result > span { margin-top: 4px; color: var(--color-text-muted); font-size: 12px; }
-.chest-form, .chest-result { display: flex; flex-direction: column; gap: 12px; }
-.chest-count-row { display: flex; justify-content: space-between; color: var(--color-text-secondary); font-size: 12px; }
-.chest-count-row strong { color: var(--em-gold); }
-.chest-range { accent-color: var(--em-gold); }
-.chest-controls, .chest-actions { display: flex; gap: 8px; }
-.chest-number { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text-primary); background: var(--color-bg-card); font: inherit; }
-.chest-primary, .chest-secondary, .chest-close { min-height: 36px; padding: 7px 13px; border-radius: var(--radius-md); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
-.chest-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #d97706; color: #fff7ed; background: #92400e; }
-.chest-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.chest-secondary, .chest-close { border: 1px solid var(--color-border); color: var(--color-text-secondary); background: transparent; }
-.chest-result { align-items: center; text-align: center; }
-.chest-reveal { position: relative; display: grid; place-items: center; width: 74px; height: 68px; color: var(--em-gold); filter: drop-shadow(0 0 10px rgba(246, 211, 107, 0.5)); animation: chest-reveal 0.5s ease both; }
-.chest-reveal svg:last-child { position: absolute; top: 4px; right: 4px; color: #fff7ed; }
-.chest-rewards { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid rgba(246, 211, 107, 0.24); border-radius: var(--radius-md); background: rgba(246, 211, 107, 0.06); }
-.chest-reward { display: grid; grid-template-columns: 24px 1fr auto; gap: 7px; align-items: center; color: var(--em-gold); font-size: 12px; text-align: left; }
-.chest-reward strong { color: #fff7ed; }
-.chest-actions > * { flex: 1; }
-.chest-close { align-self: center; min-width: 100px; }
-@keyframes chest-reveal { from { opacity: 0; transform: translateY(8px) scale(0.76); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.chest-modal-enter-active, .chest-modal-leave-active { transition: opacity 0.2s ease; }
-.chest-modal-enter-from, .chest-modal-leave-to { opacity: 0; }
+.chest-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5, 4, 2, 0.82);
+  backdrop-filter: blur(7px);
+}
+
+.chest-modal {
+  width: min(100%, 460px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  overflow: hidden;
+  padding: 22px;
+  border: 3px solid #6f5336;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(246, 211, 107, 0.08), transparent 42%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 10px),
+    #21170f;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -7px 0 rgba(0, 0, 0, 0.24),
+    0 28px 90px rgba(0, 0, 0, 0.58);
+}
+
+.chest-reveal {
+  height: 180px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.chest-reveal-glow {
+  position: absolute;
+  width: 190px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.38), rgba(217, 119, 6, 0.08) 52%, transparent 72%);
+  filter: blur(8px);
+  animation: chest-glow 1.2s ease-in-out infinite alternate;
+}
+
+.chest-reveal img {
+  width: 178px;
+  height: 178px;
+  z-index: 1;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 0 rgba(0, 0, 0, 0.28));
+  animation: chest-open-reveal 520ms cubic-bezier(0.2, 0.82, 0.2, 1.08) both;
+}
+
+.chest-reveal-spark {
+  position: absolute;
+  z-index: 2;
+  color: #fde68a;
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.72));
+  animation: chest-spark 760ms ease-out both;
+}
+
+.chest-reveal-spark-left { left: 15%; top: 36%; }
+.chest-reveal-spark-right { right: 14%; top: 18%; animation-delay: 120ms; }
+
+.chest-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.chest-heading span {
+  color: #e4b84a;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.chest-heading h2 {
+  color: #fff7ed;
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+
+.chest-rewards {
+  display: grid;
+  gap: 8px;
+}
+
+.chest-reward {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 10px;
+  border: 2px solid rgba(228, 184, 74, 0.28);
+  border-radius: var(--radius-md);
+  background: rgba(228, 184, 74, 0.07);
+  animation: chest-reward-in 360ms 220ms ease-out both;
+}
+
+.chest-reward-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(228, 184, 74, 0.3);
+  border-radius: var(--radius-sm);
+  color: #fca5a5;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.chest-reward-icon img { width: 40px; height: 40px; object-fit: contain; }
+.chest-reward > span:nth-child(2) { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.chest-reward small { color: var(--color-text-muted); font-size: 9px; font-weight: 750; text-transform: uppercase; }
+.chest-reward strong { overflow: hidden; color: #fff7ed; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.chest-reward b { color: #f6d36b; font-size: 17px; font-variant-numeric: tabular-nums; }
+
+.chest-done {
+  min-height: 42px;
+  border: 2px solid #d97706;
+  border-radius: var(--radius-sm);
+  color: #fff7ed;
+  background: linear-gradient(180deg, #a94d0b, #78350f);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.14), 0 4px 0 #431407;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.chest-done:active { translate: 0 3px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 0 #431407; }
+
+@keyframes chest-open-reveal {
+  from { opacity: 0; transform: translateY(18px) scale(0.72); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes chest-glow {
+  from { opacity: 0.62; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes chest-spark {
+  from { opacity: 0; transform: translateY(10px) scale(0.4) rotate(-18deg); }
+  to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+}
+
+@keyframes chest-reward-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chest-modal-enter-active,
+.chest-modal-leave-active { transition: opacity 180ms ease; }
+.chest-modal-enter-from,
+.chest-modal-leave-to { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chest-reveal-glow,
+  .chest-reveal img,
+  .chest-reveal-spark,
+  .chest-reward { animation: none; }
+}
 </style>

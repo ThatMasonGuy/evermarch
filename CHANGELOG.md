@@ -5,6 +5,7 @@
 ### Fixed
 
 - Make miner's chests substantially more common in active mining and prevent deterministic spawn rolls from producing extreme dry streaks (#21).
+- Replace the chest placeholder UI with dedicated art, move quantity selection into the inventory detail panel, support unbounded batch opening, and show chest blocks directly in active mining (#22).
 
 ## [v0.3.0] - 2026-07-12
 

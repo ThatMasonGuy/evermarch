@@ -415,7 +415,7 @@ function grantActiveMiningBlockReward(
 
   if (block.containsChest) {
     store.addItem('chest', 1)
-    store.addLog('A miner\'s chest was hidden in the block!', 'gain')
+    store.addLog('A miner\'s chest was opened!', 'gain')
   }
 
   if (block.kind !== 'stone' && block.kind !== 'gravel') {

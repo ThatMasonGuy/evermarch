@@ -1,5 +1,5 @@
 <template>
-  <div class="active-mining-panel">
+  <div class="active-mining-panel" :class="{ 'active-mining-panel-blasting': blastPhase === 'blast' }">
     <header class="active-mining-top">
       <div class="active-mining-brand">
         <span class="active-mining-brand-icon">
@@ -112,6 +112,25 @@
             </button>
           </div>
         </div>
+
+        <Transition name="active-mining-blast">
+          <div v-if="blastPhase" class="active-mining-blast-overlay" :class="`active-mining-blast-${blastPhase}`" aria-live="polite">
+            <div v-if="blastPhase === 'fuse'" class="active-mining-blast-charge">
+              <img :src="tntSprite" alt="" />
+              <span class="active-mining-blast-fuse-spark" aria-hidden="true"></span>
+              <small>Fuse lit</small>
+            </div>
+            <div v-else class="active-mining-blast-impact">
+              <span class="active-mining-blast-flash" aria-hidden="true"></span>
+              <span class="active-mining-blast-shockwave" aria-hidden="true"></span>
+              <img :src="blastSprite" alt="" />
+              <span class="active-mining-blast-debris" aria-hidden="true">
+                <i v-for="index in 12" :key="index"></i>
+              </span>
+              <strong>Mine face cleared</strong>
+            </div>
+          </div>
+        </Transition>
       </section>
     </div>
 
@@ -134,7 +153,7 @@
         title="Blast every block in the current mine face"
         @click="useTnt"
       >
-        <span class="active-mining-tnt-icon">TNT</span>
+        <span class="active-mining-tnt-icon"><img :src="tntSprite" alt="" /></span>
         <span>
           <small>TNT</small>
           <strong>{{ store.getItemCount('tnt') }}</strong>
@@ -171,14 +190,6 @@
       </div>
 
     </footer>
-
-    <Transition name="active-mining-blast">
-      <div v-if="blastActive" class="active-mining-blast-overlay" aria-live="polite">
-        <span class="active-mining-tnt-icon">TNT</span>
-        <strong>BLAST!</strong>
-        <small>Mine face cleared</small>
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -191,7 +202,7 @@ import type { TaskDefinition } from '../data/tasks'
 import { getResourceDefinition } from '../data/resources'
 import { detonateActiveMiningTnt, performActiveMiningBlock } from '../engine/gameEngine'
 import { getActiveMiningBlockProgress, type ActiveMiningBlockState } from '../engine/activeMining'
-import { SPECIAL_ITEM_SPRITES, TILE_SPRITES, spriteForResource, spriteForSkill } from '../assets/visualAssets'
+import { EFFECT_SPRITES, SPECIAL_ITEM_SPRITES, TILE_SPRITES, spriteForResource, spriteForSkill } from '../assets/visualAssets'
 
 const props = defineProps<{
   task: TaskDefinition
@@ -207,11 +218,13 @@ let holdTimer: ReturnType<typeof setInterval> | null = null
 let blastTimer: ReturnType<typeof setTimeout> | null = null
 let activePointerId: number | null = null
 const heldBlockId = ref<string | null>(null)
-const blastActive = ref(false)
+const blastPhase = ref<'fuse' | 'blast' | null>(null)
 const mineBoardFrame = ref<HTMLElement | null>(null)
 
 const mining = computed(() => store.activeMining)
 const pickaxeSprite = computed(() => spriteForSkill('mining'))
+const tntSprite = spriteForResource('tnt', 'misc') ?? ''
+const blastSprite = EFFECT_SPRITES.miningBlast
 const chestClosedSprite = SPECIAL_ITEM_SPRITES.minersChestClosed
 const chestOpenSprite = SPECIAL_ITEM_SPRITES.minersChestOpen
 const targetResourceId = computed(() => props.task.drops[0]?.resourceId ?? null)
@@ -251,12 +264,15 @@ watch(
 )
 
 watch(() => store.activeMiningBlastNonce, () => {
-  blastActive.value = true
+  blastPhase.value = 'fuse'
   if (blastTimer) clearTimeout(blastTimer)
   blastTimer = setTimeout(() => {
-    blastActive.value = false
-    blastTimer = null
-  }, 700)
+    blastPhase.value = 'blast'
+    blastTimer = setTimeout(() => {
+      blastPhase.value = null
+      blastTimer = null
+    }, 800)
+  }, 360)
 })
 
 onBeforeUnmount(() => {
@@ -1054,12 +1070,16 @@ function depthTickTop(tick: number): string {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #7f1d1d;
-  background: linear-gradient(180deg, #ef4444, #991b1b);
-  color: #fff7ed;
-  font-size: 10px;
-  font-weight: 950;
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(248, 113, 113, 0.34);
+  background: radial-gradient(circle, rgba(127, 29, 29, 0.34), rgba(0, 0, 0, 0.18));
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08);
+}
+
+.active-mining-tnt-icon img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.28));
 }
 
 .active-mining-progress-card {
@@ -1102,45 +1122,162 @@ function depthTickTop(tick: number): string {
 
 .active-mining-blast-overlay {
   position: absolute;
-  inset: 12%;
+  inset: 0;
   z-index: 20;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border: 3px solid #f59e0b;
-  border-radius: var(--radius-lg);
-  color: #fff7ed;
-  background: radial-gradient(circle, rgba(239, 68, 68, 0.9), rgba(69, 10, 10, 0.92));
-  box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.1), 0 0 40px rgba(239, 68, 68, 0.42);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-md);
   pointer-events: none;
-  text-align: center;
 }
 
-.active-mining-blast-overlay strong {
+.active-mining-blast-charge,
+.active-mining-blast-impact {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.active-mining-blast-charge img {
+  width: clamp(88px, 22vw, 138px);
+  height: clamp(88px, 22vw, 138px);
+  object-fit: contain;
+  filter: drop-shadow(0 10px 0 rgba(0, 0, 0, 0.3));
+  animation: active-mining-fuse-pulse 180ms ease-in-out infinite alternate;
+}
+
+.active-mining-blast-charge small {
+  margin-top: -12px;
+  padding: 4px 8px;
+  border: 1px solid rgba(251, 191, 36, 0.44);
+  border-radius: var(--radius-sm);
+  color: #fde68a;
+  background: rgba(48, 24, 8, 0.84);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.active-mining-blast-fuse-spark {
+  position: absolute;
+  top: 5%;
+  right: 23%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff7c2;
+  box-shadow: 0 0 0 5px rgba(251, 191, 36, 0.42), 0 0 22px 9px rgba(249, 115, 22, 0.54);
+  animation: active-mining-fuse-spark 90ms steps(2, end) infinite;
+}
+
+.active-mining-blast-impact {
+  width: 100%;
+  height: 100%;
+}
+
+.active-mining-blast-impact > img {
+  width: min(82%, 330px);
+  height: min(82%, 330px);
+  z-index: 2;
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px rgba(249, 115, 22, 0.5));
+  animation: active-mining-blast-pop 620ms cubic-bezier(0.12, 0.75, 0.18, 1) both;
+}
+
+.active-mining-blast-impact strong {
+  position: absolute;
+  bottom: 8%;
+  z-index: 4;
+  padding: 6px 11px;
+  border: 2px solid #f59e0b;
+  border-radius: var(--radius-sm);
+  color: #fff7ed;
+  background: rgba(69, 26, 3, 0.9);
+  box-shadow: 0 4px 0 rgba(67, 20, 7, 0.8);
   font-family: var(--font-display);
-  font-size: clamp(22px, 5vw, 38px);
-  letter-spacing: 0.08em;
+  font-size: clamp(13px, 2.8vw, 20px);
+  letter-spacing: 0.04em;
 }
 
-.active-mining-blast-overlay small {
-  color: #fed7aa;
-  font-size: 12px;
-  font-weight: 800;
+.active-mining-blast-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.88), rgba(251, 191, 36, 0.38) 24%, transparent 62%);
+  animation: active-mining-blast-flash 420ms ease-out both;
 }
 
-.active-mining-blast-enter-active { animation: active-mining-blast-in 0.22s ease-out; }
-.active-mining-blast-leave-active { animation: active-mining-blast-out 0.4s ease-in; }
-
-@keyframes active-mining-blast-in {
-  from { opacity: 0; transform: scale(0.7); }
-  to { opacity: 1; transform: scale(1); }
+.active-mining-blast-shockwave {
+  position: absolute;
+  z-index: 3;
+  width: 80px;
+  height: 80px;
+  border: 8px solid rgba(255, 237, 160, 0.78);
+  border-radius: 50%;
+  animation: active-mining-shockwave 560ms ease-out both;
 }
 
-@keyframes active-mining-blast-out {
-  from { opacity: 1; }
-  to { opacity: 0; transform: scale(1.12); }
+.active-mining-blast-debris {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.active-mining-blast-debris i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  background: #6f5b49;
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.28);
+  animation: active-mining-debris 580ms ease-out both;
+}
+
+.active-mining-blast-debris i:nth-child(1) { left: 18%; top: 46%; --debris-x: -48px; --debris-y: -12px; }
+.active-mining-blast-debris i:nth-child(2) { left: 26%; top: 30%; --debris-x: -34px; --debris-y: -42px; }
+.active-mining-blast-debris i:nth-child(3) { left: 42%; top: 24%; --debris-x: -12px; --debris-y: -52px; }
+.active-mining-blast-debris i:nth-child(4) { right: 42%; top: 22%; --debris-x: 12px; --debris-y: -54px; }
+.active-mining-blast-debris i:nth-child(5) { right: 25%; top: 31%; --debris-x: 38px; --debris-y: -38px; }
+.active-mining-blast-debris i:nth-child(6) { right: 17%; top: 48%; --debris-x: 52px; --debris-y: -8px; }
+.active-mining-blast-debris i:nth-child(7) { right: 20%; bottom: 29%; --debris-x: 46px; --debris-y: 36px; }
+.active-mining-blast-debris i:nth-child(8) { right: 37%; bottom: 20%; --debris-x: 18px; --debris-y: 52px; }
+.active-mining-blast-debris i:nth-child(9) { left: 38%; bottom: 19%; --debris-x: -16px; --debris-y: 54px; }
+.active-mining-blast-debris i:nth-child(10) { left: 21%; bottom: 28%; --debris-x: -44px; --debris-y: 38px; }
+.active-mining-blast-debris i:nth-child(11) { left: 32%; top: 42%; --debris-x: -28px; --debris-y: -8px; }
+.active-mining-blast-debris i:nth-child(12) { right: 32%; top: 43%; --debris-x: 30px; --debris-y: -6px; }
+
+.active-mining-panel-blasting .active-mining-board-frame {
+  animation: active-mining-board-shake 440ms ease-out both;
+}
+
+.active-mining-blast-enter-active { transition: opacity 120ms ease-out; }
+.active-mining-blast-leave-active { transition: opacity 220ms ease-in; }
+.active-mining-blast-enter-from,
+.active-mining-blast-leave-to { opacity: 0; }
+
+@keyframes active-mining-fuse-pulse { from { transform: scale(0.97) rotate(-1deg); } to { transform: scale(1.02) rotate(1deg); } }
+@keyframes active-mining-fuse-spark { from { opacity: 0.65; transform: scale(0.72); } to { opacity: 1; transform: scale(1.18); } }
+@keyframes active-mining-blast-pop { 0% { opacity: 0; transform: scale(0.12) rotate(-8deg); } 24% { opacity: 1; transform: scale(1.12) rotate(2deg); } 76% { opacity: 1; transform: scale(1.18) rotate(0); } 100% { opacity: 0.28; transform: scale(1.32) rotate(0); } }
+@keyframes active-mining-blast-flash { from { opacity: 1; } to { opacity: 0; } }
+@keyframes active-mining-shockwave { from { opacity: 0.9; transform: scale(0.35); } to { opacity: 0; transform: scale(5.4); } }
+@keyframes active-mining-debris { from { opacity: 1; transform: translate(0, 0) rotate(0); } to { opacity: 0; transform: translate(var(--debris-x), var(--debris-y)) rotate(150deg); } }
+@keyframes active-mining-board-shake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-5px, 3px); }
+  30% { transform: translate(5px, -3px); }
+  48% { transform: translate(-3px, -2px); }
+  66% { transform: translate(3px, 2px); }
+  82% { transform: translate(-1px, 1px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .active-mining-panel-blasting .active-mining-board-frame,
+  .active-mining-blast-charge img,
+  .active-mining-blast-fuse-spark,
+  .active-mining-blast-impact > img,
+  .active-mining-blast-flash,
+  .active-mining-blast-shockwave,
+  .active-mining-blast-debris i { animation: none; }
 }
 
 @media (max-width: 1180px) {

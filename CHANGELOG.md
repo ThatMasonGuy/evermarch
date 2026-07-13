@@ -6,6 +6,7 @@
 
 - Calibrate active-mining chest generation to average one chest-bearing layer every 5-6 layers while preserving fair deterministic rolls across both mine grid sizes (#21).
 - Replace the chest placeholder UI with dedicated art, move quantity selection into the inventory detail panel, support unbounded batch opening, and show chest blocks directly in active mining (#22).
+- Replace placeholder TNT labels with original explosive art and a layered fuse, blast, shockwave, debris, and mining-board shake sequence (#23).
 
 ## [v0.3.0] - 2026-07-12
 

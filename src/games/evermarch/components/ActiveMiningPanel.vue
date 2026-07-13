@@ -76,14 +76,20 @@
               @pointerenter="continueMining(block.id)"
             >
               <span class="active-mine-block-texture"></span>
-              <span v-if="block.kind !== 'stone' && block.kind !== 'gravel'" class="active-mine-ore">
+              <span v-if="!block.containsChest && block.kind !== 'stone' && block.kind !== 'gravel'" class="active-mine-ore">
                 <span v-for="index in 5" :key="index"></span>
               </span>
               <img
-                v-if="blockSprite(block)"
+                v-if="!block.containsChest && blockSprite(block)"
                 :src="blockSprite(block) ?? ''"
                 alt=""
                 class="active-mine-block-sprite"
+              />
+              <img
+                v-if="block.containsChest"
+                :src="block.broken ? chestOpenSprite : chestClosedSprite"
+                alt=""
+                class="active-mine-chest-sprite"
               />
               <span
                 v-if="!block.broken && blockProgress(block) > 0"
@@ -100,8 +106,7 @@
               >
                 <span :style="{ width: durabilityWidth(block) }"></span>
               </span>
-              <span v-if="block.broken && block.containsChest" class="active-mine-chest-found">CHEST</span>
-              <span v-if="block.broken" class="active-mine-rubble" aria-hidden="true">
+              <span v-if="block.broken && !block.containsChest" class="active-mine-rubble" aria-hidden="true">
                 <i v-for="index in 6" :key="index"></i>
               </span>
             </button>
@@ -186,7 +191,7 @@ import type { TaskDefinition } from '../data/tasks'
 import { getResourceDefinition } from '../data/resources'
 import { detonateActiveMiningTnt, performActiveMiningBlock } from '../engine/gameEngine'
 import { getActiveMiningBlockProgress, type ActiveMiningBlockState } from '../engine/activeMining'
-import { TILE_SPRITES, spriteForResource, spriteForSkill } from '../assets/visualAssets'
+import { SPECIAL_ITEM_SPRITES, TILE_SPRITES, spriteForResource, spriteForSkill } from '../assets/visualAssets'
 
 const props = defineProps<{
   task: TaskDefinition
@@ -207,6 +212,8 @@ const mineBoardFrame = ref<HTMLElement | null>(null)
 
 const mining = computed(() => store.activeMining)
 const pickaxeSprite = computed(() => spriteForSkill('mining'))
+const chestClosedSprite = SPECIAL_ITEM_SPRITES.minersChestClosed
+const chestOpenSprite = SPECIAL_ITEM_SPRITES.minersChestOpen
 const targetResourceId = computed(() => props.task.drops[0]?.resourceId ?? null)
 const targetResource = computed(() => targetResourceId.value ? getResourceDefinition(targetResourceId.value) : null)
 const targetSprite = computed(() =>
@@ -360,6 +367,7 @@ function blockClass(block: ActiveMiningBlockState): Record<string, boolean> {
     'active-mine-block-broken': block.broken,
     'active-mine-block-damaged': blockProgress(block) > 0 && !block.broken,
     'active-mine-block-held': heldBlockId.value === block.id,
+    'active-mine-block-chest': block.containsChest,
   }
 }
 
@@ -378,7 +386,8 @@ function tileForBlock(block: ActiveMiningBlockState): string {
 
 function blockAriaLabel(block: ActiveMiningBlockState): string {
   const percent = Math.round(blockProgress(block) * 100)
-  if (block.broken) return block.containsChest ? "Miner's chest found" : `${block.label} broken`
+  if (block.containsChest) return block.broken ? "Miner's chest opened" : `Miner's chest, ${percent}% opened`
+  if (block.broken) return `${block.label} broken`
   return `${block.label}, ${percent}% broken`
 }
 
@@ -840,6 +849,27 @@ function depthTickTop(tick: number): string {
   pointer-events: none;
 }
 
+.active-mine-block-chest .active-mine-block-texture {
+  opacity: 0.18;
+  filter: saturate(0.65) brightness(0.58);
+}
+
+.active-mine-chest-sprite {
+  position: absolute;
+  inset: 7%;
+  z-index: 1;
+  width: 86%;
+  height: 86%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 0 rgba(0, 0, 0, 0.3));
+  pointer-events: none;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.active-mine-block-held .active-mine-chest-sprite {
+  transform: translateY(2px) scale(0.98);
+}
+
 .active-mine-damage-chip {
   width: 66%;
   height: 66%;
@@ -950,6 +980,11 @@ function depthTickTop(tick: number): string {
 .active-mine-block-broken .active-mine-ore,
 .active-mine-block-broken .active-mine-block-sprite {
   opacity: 0.08;
+}
+
+.active-mine-block-broken .active-mine-chest-sprite {
+  opacity: 1;
+  filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.28));
 }
 
 .active-mining-belt {
@@ -1063,21 +1098,6 @@ function depthTickTop(tick: number): string {
   color: var(--color-text-muted);
   font-size: 10px;
   line-height: 1.35;
-}
-
-.active-mine-chest-found {
-  position: absolute;
-  inset: auto 4px 4px;
-  z-index: 3;
-  padding: 2px 3px;
-  border: 1px solid #f59e0b;
-  border-radius: 3px;
-  color: #fff7ed;
-  background: #92400e;
-  font-size: 8px;
-  font-weight: 950;
-  letter-spacing: 0.04em;
-  text-align: center;
 }
 
 .active-mining-blast-overlay {

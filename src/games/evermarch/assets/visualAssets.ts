@@ -16,6 +16,8 @@ import oreSilverSprite from './vendor/kenney-voxel/items/ore_silver.png'
 import pickIronSprite from './vendor/kenney-voxel/items/pick_iron.png'
 import seedSprite from './vendor/kenney-voxel/items/seed.png'
 import wheatSprite from './vendor/kenney-voxel/items/wheat.png'
+import tntChargeSprite from './generated/tnt/tnt-charge.png'
+import miningBlastSprite from './generated/tnt/mining-blast.png'
 import dirtGrassTile from './vendor/kenney-voxel/tiles/dirt_grass.png'
 import grassTopTile from './vendor/kenney-voxel/tiles/grass_top.png'
 import leavesTile from './vendor/kenney-voxel/tiles/leaves.png'
@@ -37,6 +39,10 @@ export const TILE_SPRITES = {
   wood: woodTile,
 } as const
 
+export const EFFECT_SPRITES = {
+  miningBlast: miningBlastSprite,
+} as const
+
 const skillSprites: Record<SkillId, string> = {
   woodcutting: axeIronSprite,
   fishing: fishingPoleSprite,
@@ -51,6 +57,7 @@ const skillSprites: Record<SkillId, string> = {
 }
 
 const exactResourceSprites: Record<string, string> = {
+  tnt: tntChargeSprite,
   stone: stoneTile,
   gravel: dirtGrassTile,
   coal: oreCoalSprite,

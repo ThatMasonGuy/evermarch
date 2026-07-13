@@ -139,8 +139,8 @@
         </section>
 
         <section v-if="selectedItem.id === 'tnt'" class="inv-use-panel inv-use-panel-tnt">
-          <div class="inv-use-heading"><Bomb :size="16" /><div><strong>Mining explosive</strong><span>Breaks every visible block in active mining.</span></div></div>
-          <button type="button" class="inv-use-btn" :disabled="!activeMiningSelected" @click="useSelectedTnt"><Bomb :size="14" /> {{ activeMiningSelected ? 'Use TNT on active mining' : 'Select active mining first' }}</button>
+          <div class="inv-use-heading"><img :src="selectedItem.sprite ?? ''" alt="" class="inv-use-tnt-sprite" /><div><strong>Mining explosive</strong><span>Breaks every visible block in active mining.</span></div></div>
+          <button type="button" class="inv-use-btn" :disabled="!activeMiningSelected" @click="useSelectedTnt"><img :src="selectedItem.sprite ?? ''" alt="" /> {{ activeMiningSelected ? 'Use TNT on active mining' : 'Select active mining first' }}</button>
           <p v-if="tntMessage" class="inv-use-message">{{ tntMessage }}</p>
         </section>
 
@@ -1256,11 +1256,13 @@ function formatTimestamp(value: number | null): string {
 
 .inv-use-heading { display: flex; align-items: flex-start; gap: 7px; color: var(--em-gold); }
 .inv-use-panel-tnt .inv-use-heading { color: #fca5a5; }
+.inv-use-tnt-sprite { width: 30px; height: 30px; object-fit: contain; filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.24)); }
 .inv-use-heading div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .inv-use-heading strong { font-size: 12px; }
 .inv-use-heading span { color: var(--color-text-muted); font-size: 10px; line-height: 1.4; }
 .inv-use-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 7px 10px; border: 1px solid #d97706; border-radius: var(--radius-sm); color: #fff7ed; background: #92400e; font-size: 11px; font-weight: 800; cursor: pointer; }
 .inv-use-panel-tnt .inv-use-btn { border-color: #ef4444; background: #991b1b; }
+.inv-use-panel-tnt .inv-use-btn img { width: 22px; height: 22px; object-fit: contain; }
 .inv-use-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .inv-use-message { color: #fecaca; font-size: 10px; }
 

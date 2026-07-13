@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Make miner's chests substantially more common in active mining and prevent deterministic spawn rolls from producing extreme dry streaks (#21).
+- Calibrate active-mining chest generation to average one chest-bearing layer every 5-6 layers while preserving fair deterministic rolls across both mine grid sizes (#21).
 
 ## [v0.3.0] - 2026-07-12
 

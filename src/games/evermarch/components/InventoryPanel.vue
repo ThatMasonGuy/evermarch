@@ -134,8 +134,38 @@
         </div>
 
         <section v-if="selectedItem.id === 'chest'" class="inv-use-panel inv-use-panel-chest">
-          <div class="inv-use-heading"><PackageOpen :size="16" /><div><strong>Open chests</strong><span>Each chest contains 1 or 2 TNT.</span></div></div>
-          <button type="button" class="inv-use-btn" @click="showChestModal = true"><Sparkles :size="14" /> Open miner's chests</button>
+          <div class="inv-use-heading">
+            <img :src="selectedItem.sprite ?? ''" alt="" class="inv-use-chest-sprite" />
+            <div><strong>Open chests</strong><span>Choose an amount, then reveal the combined haul.</span></div>
+          </div>
+          <div class="inv-use-count-row">
+            <span>Amount</span>
+            <strong>{{ normalizedChestOpenAmount.toLocaleString() }} / {{ chestAvailable.toLocaleString() }}</strong>
+          </div>
+          <input
+            class="inv-use-range"
+            type="range"
+            min="1"
+            :max="Math.max(1, chestAvailable)"
+            :value="normalizedChestOpenAmount"
+            aria-label="Chests to open"
+            @input="setChestOpenAmountFromEvent"
+          />
+          <div class="inv-use-controls">
+            <input
+              class="inv-use-input"
+              type="number"
+              min="1"
+              :max="chestAvailable"
+              :value="normalizedChestOpenAmount"
+              aria-label="Number of chests to open"
+              @input="setChestOpenAmountFromEvent"
+            />
+            <button type="button" class="inv-use-all" @click="chestOpenAmount = chestAvailable">All</button>
+          </div>
+          <button type="button" class="inv-use-btn" @click="openSelectedChests">
+            <Sparkles :size="14" /> Open {{ normalizedChestOpenAmount.toLocaleString() }} {{ normalizedChestOpenAmount === 1 ? 'chest' : 'chests' }}
+          </button>
         </section>
 
         <section v-if="selectedItem.id === 'tnt'" class="inv-use-panel inv-use-panel-tnt">
@@ -316,7 +346,7 @@
     </section>
   </div>
 
-  <ChestOpeningModal :visible="showChestModal" :available="store.getItemCount('chest')" @close="showChestModal = false" />
+  <ChestOpeningModal :visible="chestResult !== null" :result="chestResult" @close="chestResult = null" />
 </template>
 
 <script setup lang="ts">
@@ -343,7 +373,7 @@ import {
   Wheat,
   Wrench,
 } from 'lucide-vue-next'
-import { useGameStore, type ItemStats } from '../stores/gameStore'
+import { useGameStore, type ChestOpenResult, type ItemStats } from '../stores/gameStore'
 import { getResourceDefinition, getResourceName } from '../data/resources'
 import { ALL_TASKS, getTaskById, type TaskDefinition } from '../data/tasks'
 import { SKILLS } from '../data/skills'
@@ -398,7 +428,8 @@ const selectedItemId = ref<string | null>(null)
 const activeDetailTab = ref<DetailTab>('info')
 const sellAmount = ref(0)
 const allButOnePending = ref(false)
-const showChestModal = ref(false)
+const chestOpenAmount = ref(1)
+const chestResult = ref<ChestOpenResult | null>(null)
 const tntMessage = ref('')
 
 const iconMap: Record<string, Component> = {
@@ -510,6 +541,8 @@ const normalizedSellAmount = computed(() => clampSellAmount(sellAmount.value))
 const projectedSellValue = computed(() => (selectedItem.value?.sellValue ?? 0) * normalizedSellAmount.value)
 const hasSellableItem = computed(() => !!selectedItem.value && selectedItem.value.sellValue > 0 && selectedItem.value.count > 0)
 const canSellSelected = computed(() => hasSellableItem.value && maxSellAmount.value > 0)
+const chestAvailable = computed(() => store.getItemCount('chest'))
+const normalizedChestOpenAmount = computed(() => clampChestOpenAmount(chestOpenAmount.value))
 const activeMiningSelected = computed(() => {
   const taskId = store.lanes.active.taskId
   return !!taskId && getTaskById(taskId)?.skillId === 'mining'
@@ -541,6 +574,12 @@ watch(selectedItemId, (itemId) => {
 
   sellAmount.value = item.count > 0 ? 1 : 0
 }, { immediate: true })
+
+watch(chestAvailable, (available) => {
+  chestOpenAmount.value = available > 0
+    ? Math.max(1, Math.min(chestOpenAmount.value, available))
+    : 0
+})
 
 function selectItem(id: string) {
   allButOnePending.value = false
@@ -614,6 +653,25 @@ function sellSelected() {
   sellAmount.value = recalculateAllButOne
     ? Math.max(0, remaining - 1)
     : Math.min(amount, remaining)
+}
+
+function setChestOpenAmountFromEvent(event: Event) {
+  const target = event.target as HTMLInputElement
+  chestOpenAmount.value = clampChestOpenAmount(Number(target.value))
+}
+
+function clampChestOpenAmount(amount: number): number {
+  if (chestAvailable.value <= 0) return 0
+  if (!Number.isFinite(amount)) return 1
+  return Math.max(1, Math.min(chestAvailable.value, Math.floor(amount)))
+}
+
+function openSelectedChests() {
+  const result = store.openChests(normalizedChestOpenAmount.value)
+  if (result.opened <= 0) return
+
+  chestResult.value = result
+  chestOpenAmount.value = store.getItemCount('chest') > 0 ? 1 : 0
 }
 
 function useSelectedTnt() {
@@ -1260,6 +1318,15 @@ function formatTimestamp(value: number | null): string {
 .inv-use-heading div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .inv-use-heading strong { font-size: 12px; }
 .inv-use-heading span { color: var(--color-text-muted); font-size: 10px; line-height: 1.4; }
+.inv-use-chest-sprite { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.24)); }
+.inv-use-count-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--color-text-muted); font-size: 10px; font-weight: 700; }
+.inv-use-count-row strong { color: var(--em-gold); font-size: 11px; font-variant-numeric: tabular-nums; }
+.inv-use-range { width: 100%; accent-color: var(--em-gold); }
+.inv-use-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.inv-use-input,
+.inv-use-all { min-height: 34px; border: 1px solid rgba(246, 211, 107, 0.3); border-radius: var(--radius-sm); color: var(--color-text-primary); background: rgba(0, 0, 0, 0.22); font: inherit; font-size: 11px; }
+.inv-use-input { min-width: 0; padding: 6px 8px; }
+.inv-use-all { padding: 6px 12px; color: var(--em-gold); font-weight: 850; cursor: pointer; }
 .inv-use-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 7px 10px; border: 1px solid #d97706; border-radius: var(--radius-sm); color: #fff7ed; background: #92400e; font-size: 11px; font-weight: 800; cursor: pointer; }
 .inv-use-panel-tnt .inv-use-btn { border-color: #ef4444; background: #991b1b; }
 .inv-use-panel-tnt .inv-use-btn img { width: 22px; height: 22px; object-fit: contain; }

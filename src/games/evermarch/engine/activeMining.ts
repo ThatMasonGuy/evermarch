@@ -47,7 +47,8 @@ export interface ActiveMiningCadenceInput {
 }
 
 const ACTIVE_MINING_VERSION = 1
-const CHEST_CHANCE_PER_BLOCK = 0.05
+const AVERAGE_LAYERS_PER_CHEST = 5.5
+const CHEST_CHANCE_PER_LAYER = 1 / AVERAGE_LAYERS_PER_CHEST
 
 const ORE_POOL = [
   { resourceId: 'copper_ore', level: 5 },
@@ -331,7 +332,7 @@ function createResourceBlock(
     variant,
     tint: tintForBlock(kind, resourceId),
     broken: false,
-    containsChest: randomForChest(state, index) < CHEST_CHANCE_PER_BLOCK,
+    containsChest: randomForChest(state, index) < chestChancePerBlock(state.gridWidth * state.gridHeight),
   }
 }
 
@@ -430,6 +431,11 @@ function randomForChest(state: ActiveMiningState, index: number): number {
   hash ^= hash >>> 16
 
   return (hash >>> 0) / 4294967296
+}
+
+function chestChancePerBlock(blockCount: number): number {
+  const safeBlockCount = Math.max(1, Math.floor(blockCount))
+  return 1 - Math.pow(1 - CHEST_CHANCE_PER_LAYER, 1 / safeBlockCount)
 }
 
 function normalizeBlocks(blocks: ActiveMiningBlockState[] | undefined): ActiveMiningBlockState[] {

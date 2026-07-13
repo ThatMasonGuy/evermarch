@@ -628,8 +628,7 @@ export const useGameStore = defineStore('evermarch-game', () => {
     if (opened <= 0 || !removeItem('chest', opened)) return { opened: 0, rewards: [] }
 
     recordItemConsumed('chest', opened)
-    const tntAmount = Array.from({ length: opened }, () => 1 + Math.floor(Math.random() * 2))
-      .reduce((sum, reward) => sum + reward, 0)
+    const tntAmount = opened + rollChestBonusRewards(opened)
     addItem('tnt', tntAmount)
     addLog(
       `Opened ${opened.toLocaleString()} ${opened === 1 ? 'chest' : 'chests'} and found ${tntAmount.toLocaleString()} TNT.`,
@@ -1756,4 +1755,21 @@ function percent(value: number, total: number): number {
 function percentFromRatio(value: number, total: number): number {
   if (total <= 0) return 100
   return Math.min(100, Math.max(0, Math.round((value / total) * 100)))
+}
+
+function rollChestBonusRewards(chestCount: number): number {
+  if (chestCount <= 10_000) {
+    let bonusRewards = 0
+    for (let index = 0; index < chestCount; index++) {
+      if (Math.random() < 0.5) bonusRewards++
+    }
+    return bonusRewards
+  }
+
+  const firstRoll = Math.max(Number.EPSILON, Math.random())
+  const secondRoll = Math.random()
+  const normalRoll = Math.sqrt(-2 * Math.log(firstRoll)) * Math.cos(2 * Math.PI * secondRoll)
+  const mean = chestCount / 2
+  const standardDeviation = Math.sqrt(chestCount / 4)
+  return Math.max(0, Math.min(chestCount, Math.round(mean + normalRoll * standardDeviation)))
 }
